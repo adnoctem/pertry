@@ -1,0 +1,6 @@
+[sqlfluff]
+
+# Supported dialects https://docs.sqlfluff.com/en/stable/perma/dialects.html
+dialect = sqlite
+# The migrations wrap their comments at 100 columns.
+max_line_length = 100

@@ -68,8 +68,10 @@ secrets/*
 
 ###> source/temp ###
 
-# Bazel output
-bazel-*
+# Bazel's convenience symlinks (bazel-bin, bazel-out, bazel-testlogs, bazel-<workspace>), which
+# it creates at the repository root only. Anchored, because an unanchored pattern also ignores
+# scripts such as scripts/bazel-build-platforms.sh.
+/bazel-*
 
 # distribution
 dist/*
