@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "ollamabackend",
+    srcs = [
+        "capabilities.go",
+        "ollama.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/pkg/infer/ollamabackend",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/infer"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":ollamabackend",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "ollamabackend_test",
+    srcs = ["ollama_test.go"],
+    deps = [
+        ":ollamabackend",
+        "//pkg/infer",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

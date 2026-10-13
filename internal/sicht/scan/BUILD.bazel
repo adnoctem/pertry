@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "scan",
+    srcs = [
+        "hash.go",
+        "scan.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/scan",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/sicht/core",
+        "//internal/sicht/meta",
+        "//internal/sicht/store",
+        "@org_golang_x_image//webp",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":scan",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "scan_test",
+    srcs = [
+        "hash_test.go",
+        "scan_test.go",
+    ],
+    deps = [
+        ":scan",
+        "//internal/sicht/core",
+        "//internal/sicht/meta",
+        "//internal/sicht/store",
+    ],
+)

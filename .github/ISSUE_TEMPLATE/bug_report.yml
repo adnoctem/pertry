@@ -1,0 +1,76 @@
+# Copyright Ad Noctem Collective
+# SPDX-License-Identifier: MIT
+
+name: 🐞 Bug
+description: Create a report to help us improve
+labels: ["tech-issues"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue. Please fill in as much of the following form as you're able.
+
+        **Please do not report security vulnerabilities here.** sicht serves a review UI and
+        bookscape can be configured with a cloud API key, so a vulnerability report belongs in a
+        private advisory rather than a public issue.
+
+        **Both tools work on your own data.** A bookmark export is a list of everything you have
+        ever saved, and an image archive is your photographs. Nothing in this form needs either -
+        please redact paths, URLs and filenames rather than pasting them.
+  - type: dropdown
+    attributes:
+      label: Which application?
+      options:
+        - sicht (image sorter)
+        - bookscape (bookmark pipeline)
+        - shared pkg/ or build harness
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Version
+      description: Output of `sicht version` or `bookscape version`, which reports the build stamps
+      placeholder: sicht - 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Where are you running it?
+      description: |
+        WSL is called out separately on purpose. A workspace on a Windows drive reached through
+        /mnt is an order of magnitude slower to walk, and Ollama's GPU access depends on which
+        side of the boundary it was installed on - `sicht doctor` reports on both.
+      options:
+        - Linux
+        - Windows
+        - WSL
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What does `doctor` say?
+      description: |
+        For sicht, the output of `sicht doctor`. It answers most of the environment questions a
+        triage would otherwise have to ask - exiftool, Ollama, the model, VRAM, the filesystem.
+        Not applicable to bookscape, which has no doctor.
+      render: shell
+  - type: textarea
+    attributes:
+      label: What steps will reproduce the bug?
+      placeholder: |
+        1. In this environment...
+        2. With this sicht.yaml or bookscape.yaml...
+        3. Run '...'
+        4. See error...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What is the expected behaviour?
+  - type: textarea
+    attributes:
+      label: Relevant log output
+      description: |
+        Please redact before pasting. `--log-level debug` output names every file it touches, and
+        bookscape's names every URL. Never paste a cloud API key.
+      render: shell

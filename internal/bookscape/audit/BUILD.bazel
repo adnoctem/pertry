@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "audit",
+    srcs = [
+        "audit.go",
+        "render.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/bookscape/audit",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bookscape/classify",
+        "//internal/bookscape/config",
+        "//internal/bookscape/dedupe",
+        "//internal/bookscape/netscape",
+        "//internal/bookscape/store",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":audit",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "audit_test",
+    srcs = ["audit_test.go"],
+    deps = [
+        ":audit",
+        "//internal/bookscape/config",
+        "//internal/bookscape/netscape",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

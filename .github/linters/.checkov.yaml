@@ -1,0 +1,26 @@
+---
+# Checkov configuration - see
+# https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+
+# CKV_GHA_7 requires workflow_dispatch inputs to be empty, so that a build's output cannot be
+# influenced by whoever triggered it. Release takes two, and both are deliberate:
+#
+#   sha        the commit Testing verified. It cannot change what is built - the job refuses to
+#              continue when it does not match HEAD, which is the opposite of influencing the
+#              output.
+#   bootstrap  publishes exactly 0.1.0, because semantic-release cannot produce a first release
+#              with no tag to measure from. This one does change what happens, and it is guarded
+#              to main with no existing v* tags.
+#
+# `bootstrap` is removable once 0.1.0 exists, and this suppression should narrow to `sha` alone
+# when it goes. Checkov has no way to skip one check for one file, so it is skipped
+# repository-wide; there is one workflow_dispatch with inputs in the repository, and it is the one
+# described above.
+skip-check:
+  - CKV_GHA_7
+
+# No skip-path here on purpose. The testdata trees - synthetic Netscape bookmark exports for
+# bookscape, synthetic images for sicht - are excluded from every Super-Linter linter at once
+# through FILTER_REGEX_EXCLUDE in .github/workflows/superlint.yaml, because a bookmark export is
+# deliberately malformed-looking HTML that an HTML linter would reject on sight. Repeating the
+# exclusion here would be a second place to maintain it.

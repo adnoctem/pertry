@@ -1,0 +1,92 @@
+# .gitignore - pertry
+
+###> general/ai ###
+
+# personal harness settings
+.claude/
+.codex/
+.agents/
+.openaxis/
+.omc/
+.omx/
+
+# assistants and IDEs
+.cursor/
+.windsurf/
+.cline/
+.roo/
+.aide/
+.cody/
+.continue/
+
+# local integrations
+.ollama/
+.openwebui/
+.crewai/
+.autogen/
+###>
+
+###> general/editors ###
+
+# IntelliJ IDEA
+.idea/*
+
+# VS Code
+.vscode/*
+###>
+
+###> general/secret ###
+
+# The real bookmark exports and image corpora this is developed against are the owner's own
+# data and must never reach the index. A workspace is never inside this repository, but a
+# scratch one during development would be.
+secrets/*
+*.secret
+.env
+.env.*
+!.env.example
+###>
+
+###> source/sources ###
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+###>
+
+###> source/tests ###
+
+# Tests
+*.test
+
+# Go coverage tool output
+*.out
+###>
+
+###> source/temp ###
+
+# Bazel output
+bazel-*
+
+# distribution
+dist/*
+build/*
+###>
+
+###> apps/runtime ###
+
+# bookscape's working database and its exports are user data, never committed. The database
+# path is a config value (docs/design/bookscape.md section 8); these are the defaults.
+bookscape.db
+bookscape.db-shm
+bookscape.db-wal
+enriched-bookmarks.html
+enriched-bookmarks.json
+
+# sicht's workspace state lives in <root>/.sicht/ next to the user's images. A workspace is
+# never inside this repository, but a scratch one during development would be.
+.sicht/
+###>

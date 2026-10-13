@@ -1,0 +1,9 @@
+# Only vulnerabilities with no available fix belong here, documented with why they're safe to
+# skip - anything with a real fix should be bumped instead (see .github/workflows/superlint.yaml).
+#
+# Nothing is suppressed right now. sicht's design (docs/ARCHITECTURE.md#inference-layer) notes that
+# github.com/ollama/ollama carries published advisories against its server-side packages; when
+# that dependency lands, check whether govulncheck reports them as reachable before adding an
+# entry here. An unreachable advisory needs no suppression - govulncheck already reports only
+# reachable symbols.
+vulnerabilities: []

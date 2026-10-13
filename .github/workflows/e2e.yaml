@@ -1,0 +1,85 @@
+name: "End-to-end"
+
+# This workflow brings up a real Linkwarden stack and imports a bookscape export into it, which
+# is the only check that the emitted Netscape HTML is actually consumable downstream
+# (docs/ARCHITECTURE.md#export-and-linkwarden).
+#
+# It does not gate every pull request. Three container images and a Prisma migration on boot cost
+# roughly 4-6 minutes of runner time, and a docs-only or sicht-only change cannot break it. So it
+# runs nightly to catch upstream rot, on demand, and on a pull request only when the `e2e` label
+# is applied.
+#
+# Note there is deliberately no `paths:` filter. `on.pull_request.paths` and a label check in the
+# job's `if:` compose as AND rather than OR, so a filter here would silently stop the labelled run
+# that someone had just asked for.
+on:
+  schedule:
+    # 03:40 UTC, off the hour to avoid the top-of-hour scheduling crush.
+    - cron: "40 3 * * *"
+  workflow_dispatch: {}
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: "${{ github.workflow }}@${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  linkwarden:
+    name: Import a bookscape export into Linkwarden
+    # Scheduled and manual runs always go; a pull request needs the label.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'e2e')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # No registry login and no secrets. The Linkwarden image comes from ghcr.io, which has no
+      # anonymous pull limit worth worrying about, and the two Docker Hub images are pulled
+      # through mirror.gcr.io because anonymous Docker Hub pulls are rate limited per IP and CI
+      # runners share addresses. Every credential the stack needs is generated per run from
+      # crypto/rand by the test itself, which is also why this is safe to run on `pull_request`
+      # rather than `pull_request_target`.
+      - name: Pull the stack images
+        working-directory: tests/e2e/linkwarden
+        env:
+          LINKWARDEN_PORT: "3000"
+          POSTGRES_PASSWORD: pull-only
+          NEXTAUTH_SECRET: pull-only
+          MEILI_MASTER_KEY: pull-only
+        run: docker compose --file compose.yaml pull --quiet
+
+      - name: Run the end-to-end test
+        run: go test -tags e2e -timeout 20m -v ./tests/e2e/linkwarden/...
+
+      # The test tears its own stack down via t.Cleanup, but a runner-level cancellation or an OOM
+      # can cut that short. This is belt and braces, and it prints what was left behind.
+      - name: Collect leftovers
+        if: always()
+        run: |
+          echo "--- containers still running ---"
+          docker ps --all --filter 'name=bookscape-e2e-' --format '{{.Names}}\t{{.Status}}'
+          for project in $(docker ps --all --filter 'name=bookscape-e2e-' \
+              --format '{{.Label "com.docker.compose.project"}}' | sort -u); do
+            echo "--- logs for $project ---"
+            docker compose --project-name "$project" logs --no-color --tail=200 || true
+            docker compose --project-name "$project" down --volumes --remove-orphans || true
+          done

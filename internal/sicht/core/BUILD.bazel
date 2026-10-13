@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "core",
+    srcs = ["workspace.go"],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/core",
+    visibility = ["//:__subpackages__"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":core",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "core_test",
+    srcs = ["workspace_test.go"],
+    deps = [":core"],
+)

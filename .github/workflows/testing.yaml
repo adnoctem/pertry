@@ -1,0 +1,232 @@
+name: "Testing"
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main, next]
+  pull_request:
+    branches: [main, next]
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: "${{ github.workflow }}@${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  # Safe to cancel: unlike release.yaml, nothing here signs or publishes
+  # anything, so a superseded run can be dropped without leaving state behind.
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint all code with 'pre-commit'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Set up golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.14
+
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+        with:
+          extra_args: --all-files
+
+  vet:
+    name: Vet and scan for known vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Go version is declared once, in MODULE.bazel, and the status script reads it from
+      # there too. Taking it from go.mod here keeps this job on the same toolchain as the Bazel
+      # build without a third place to update.
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Check go.mod and go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      # govulncheck reports only vulnerabilities actually reachable from this module's call
+      # graph, so a finding here is a real exposure rather than a transitive advisory that no
+      # code path touches. Kept as its own step rather than folded into golangci-lint, which
+      # does not read the vulnerability database.
+      #
+      # staticcheck used to run here as well. It is redundant: golangci-lint's `standard`
+      # default set already enables the staticcheck analysers, and two runs of the same checks
+      # means two places to silence a finding.
+      - name: govulncheck
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  cross-compile:
+    name: Cross-compile ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: [lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # Plain `go build` with CGO_ENABLED=0 alongside the Bazel cross-compile below. The two
+      # catch different regressions: this one catches a dependency that needs cgo, the Bazel
+      # one catches a BUILD file that only resolves on the host platform.
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build ./...
+
+  test:
+    name: Test
+    needs: [lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # setup-bazel owns the Bazel caches (bazelisk download, repository cache, disk cache)
+      # and keys them itself. Deliberately no extra actions/cache of the output base and no
+      # --output_user_root override: the default output base is already inside the paths
+      # setup-bazel caches, and threading a path through ${{ }} into a `run:` block is exactly
+      # the template-injection pattern zizmor flags.
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Build Bazel artifacts
+        run: bazel build //...
+
+      # --config=race rather than the race flag directly. rules_go's race instrumentation
+      # requires cgo, and .bazelrc bans cgo repo-wide, so the two cannot be combined - the named
+      # config turns `pure` off for this run only. Passing the flag on its own fails at analysis
+      # time with "race instrumentation can't be enabled when cgo is disabled".
+      - name: Test Bazel artifacts
+        run: bazel test //... --config=race
+
+      # scripts/release-create.sh is a libsh consumer, so the library has to be on the machine
+      # before it runs. Installed rather than vendored, and pinned rather than tracking main:
+      # libsh is 0.x and says outright that it ships breaking changes without a major bump, so
+      # an unpinned install would let an upstream release break a release here.
+      - name: Set up libsh
+        env:
+          # renovate: datasource=github-releases depName=adnoctem/libsh
+          LIBSH_VERSION: 0.7.0
+        run: |
+          # The installer is fetched from the pinned tag rather than from main, so the script
+          # that runs and the library it installs are the same reviewed revision.
+          curl -fsSL "https://raw.githubusercontent.com/adnoctem/libsh/v${LIBSH_VERSION}/bin/install" |
+            bash -s -- --version "v${LIBSH_VERSION}"
+
+          # libman is on PATH only from the next step onwards, so this one calls it by path to
+          # ask where it put the library.
+          echo "${HOME}/.local/bin" >>"${GITHUB_PATH}"
+          echo "LIBSH_DIR=$("${HOME}/.local/bin/libman" path)" >>"${GITHUB_ENV}"
+
+      # The Windows cross-compile is a hard requirement (docs/CONTRIBUTING.md) and
+      # the reason cgo is banned repo-wide. Both release platforms are built from the same Linux
+      # runner via rules_go's platform toolchains.
+      #
+      # Through the script rather than `bazel build --config=<platform> //...`: under Bazel 9 a
+      # test target resolves its test toolchain against the target platform, so expanding //...
+      # for windows/amd64 fails at analysis. The script's header has the detail.
+      - name: Cross-compile for every release platform
+        run: scripts/bazel-build-platforms.sh
+
+      # Build what actually ships, through the same script semantic-release runs, so a break in
+      # the release path shows up on the pull request rather than at release time.
+      #
+      # --dry-run because this is checking that the path works, not producing a release: it
+      # builds every binary for every target and writes nothing. No --version either, so the
+      # stamp comes from `git describe` and the 0.x policy gate is deliberately not applied to
+      # an ordinary commit.
+      - name: Build release artifacts
+        run: scripts/release-create.sh --dry-run
+
+  # Hands the tested commit to Release.
+  #
+  # Dispatching the workflow rather than sending a repository_dispatch event, because Release
+  # takes the tested commit as an input and refuses a branch that has moved on since - an event
+  # has nowhere to put that and would release whatever the branch head happens to be by then.
+  #
+  # Dispatching is not releasing. Release does nothing unless PERTRY_RELEASE_ENABLED is `true` in
+  # the repository's Actions variables, so this is a no-op until somebody opens that gate
+  # deliberately.
+  dispatch:
+    name: Dispatch a release
+    runs-on: ubuntu-latest
+    needs: [test, vet, cross-compile]
+    permissions:
+      actions: write # dispatch release.yaml
+    steps:
+      - name: Dispatch the tested branch and commit
+        # release only after every job above succeeded
+        # ref: https://github.com/actions/runner/issues/1251
+        if: ${{ github.event_name == 'push' && always() && !contains(join(needs.*.result, ','), 'failure') }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              ...context.repo,
+              workflow_id: 'release.yaml',
+              ref: context.ref.replace('refs/heads/', ''),
+              inputs: { sha: context.sha }
+            });

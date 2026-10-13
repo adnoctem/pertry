@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "confidence",
+    srcs = ["confidence.go"],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/confidence",
+    visibility = ["//:__subpackages__"],
+    deps = ["//pkg/infer"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":confidence",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "confidence_test",
+    srcs = ["confidence_test.go"],
+    deps = [
+        ":confidence",
+        "//pkg/infer",
+    ],
+)

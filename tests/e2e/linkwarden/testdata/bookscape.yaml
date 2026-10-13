@@ -1,0 +1,40 @@
+# Configuration for the end-to-end fixture.
+#
+# The point of this file is that the 50 fixture links all reach the export with no model pass and
+# no raw-SQL seeding: `classify --pass rules` resolves every one of them from its original folder
+# path. That keeps the test decoupled from the store schema - it drives the real CLI end to end
+# rather than reaching into the database - and it means adding a link to the fixture needs no Go
+# change, only a folder that one of these rules already covers.
+
+database: ./e2e.db
+
+classify:
+  collections:
+    - Development
+    - Reference
+    - Media
+    - Reading
+    - Archive
+
+  # One rule per fixture folder. Each matches the folder itself and everything under it.
+  rules:
+    - match_source_path: ["Bookmarks bar/Dev/*"]
+      collection: Development
+    - match_source_path: ["Bookmarks bar/Docs/*"]
+      collection: Reference
+    - match_source_path: ["Bookmarks bar/Watch/*"]
+      collection: Media
+    - match_source_path: ["Bookmarks bar/Later/*"]
+      collection: Reading
+    - match_source_path: ["Bookmarks bar/Odds/*"]
+      collection: Archive
+
+export:
+  output: ./export.html
+  title: bookscape e2e
+  # No truncation here on purpose. The production default is 200, and one fixture link carries a
+  # description of exactly that length to prove the default is safely under Linkwarden's 254-char
+  # cut. Another carries 300 characters to prove where Linkwarden's own cut falls. Truncating here
+  # would hide both, and bookscape's own truncation is already covered by the unit tests in
+  # internal/bookscape/export.
+  max_description_length: 0

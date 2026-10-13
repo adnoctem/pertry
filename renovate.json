@@ -1,0 +1,74 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":enablePreCommit"
+  ],
+  "assignees": ["MVProwess"],
+  "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["modernc.org/**"],
+      "groupName": "modernc.org (pure-Go SQLite) ecosystem",
+      "minimumReleaseAge": "7 days",
+      "description": "modernc.org/sqlite pins exact minors of modernc.org/libc, /memory and /mathutil in its own go.mod - group them so a bump lands as one reviewable PR instead of several that could land out of sync. It is also the only database either application has, and the reason the repository can ban cgo at all, so a bump waits long enough for an upstream regression to surface elsewhere first."
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["golang.org/x/**"],
+      "groupName": "golang.org/x packages"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["breaking-change"],
+      "description": "Major Go module bumps (e.g. an import-path-changing rename, or a breaking API redesign) need a manual look before merge, not just a passing build."
+    },
+    {
+      "matchManagers": ["bazel-module"],
+      "matchPackageNames": ["rules_go", "gazelle"],
+      "groupName": "bazel go rules",
+      "minimumReleaseAge": "3 days",
+      "addLabels": ["build-system"],
+      "description": "rules_go and gazelle are version-coupled and were verified together against the pinned Bazel LTS in .bazelversion, which Renovate cannot see. Bumping one without the other is how that verification silently stops holding, so they land as one reviewable PR - and the compatibility note in MODULE.bazel is worth re-reading before merging."
+    },
+    {
+      "matchManagers": ["bazel-module"],
+      "addLabels": ["build-system"],
+      "minimumReleaseAge": "3 days",
+      "description": "Every other Bazel module bump also interacts with the pinned Bazel version, so it gets the same label and the same waiting period - long enough for an upstream release that was yanked or immediately patched not to reach a pull request here."
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchPackageNames": ["ghcr.io/linkwarden/linkwarden"],
+      "addLabels": ["e2e"],
+      "description": "The end-to-end test encodes Linkwarden's own HTML import behaviour - where ADD_DATE lands, the 254-character truncation, and that the description is read from a <DD> parsed as a child of the <DT>. Re-read importFromHTMLFile.ts in the new tag before merging a bump, and expect to adjust tests/e2e/linkwarden if it changed."
+    },
+    {
+      "matchDatasources": ["golang-version"],
+      "groupName": "go toolchain",
+      "description": "One pull request for both pins. A release that compiled with one Go version and declared another in go.mod is a release whose stamp lies about how it was built."
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchPackageNames": ["mirror.gcr.io/**"],
+      "enabled": false,
+      "description": "Disposable test infrastructure: a Postgres and a Meilisearch that live for two minutes, hold no real data and are never exposed. They are also pulled through a mirror whose registry does not serve a tag index, so Renovate cannot look them up anyway. The pin that matters is the linkwarden image above."
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The Go SDK is pinned twice - go_sdk.download in MODULE.bazel, which is the toolchain the Bazel build compiles with, and the go directive in go.mod, which is what actions/setup-go reads. Only the second is a manager Renovate knows, so without this the Bazel pin would sit still while go.mod moved. They have to move together: scripts/bazel-create-status.sh stamps the version it reads from MODULE.bazel, and a govulncheck run against a toolchain one patch behind fails CI on standard-library advisories that a bump already fixed.",
+      "managerFilePatterns": ["/^MODULE\\.bazel$/"],
+      "matchStrings": [
+        "go_sdk\\.download\\(version = \"(?<currentValue>[0-9.]+)\"\\)"
+      ],
+      "depNameTemplate": "go",
+      "datasourceTemplate": "golang-version",
+      "versioningTemplate": "npm"
+    }
+  ]
+}

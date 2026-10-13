@@ -1,0 +1,64 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cmd",
+    srcs = [
+        "app.go",
+        "apply.go",
+        "doctor.go",
+        "errors.go",
+        "export.go",
+        "init.go",
+        "model.go",
+        "prompts.go",
+        "review.go",
+        "rules.go",
+        "run.go",
+        "scan.go",
+        "stats.go",
+        "taxonomy.go",
+        "undo.go",
+        "version.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/cmd",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/sicht/apply",
+        "//internal/sicht/confidence",
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//internal/sicht/doctor",
+        "//internal/sicht/manifest",
+        "//internal/sicht/meta",
+        "//internal/sicht/rules",
+        "//internal/sicht/scan",
+        "//internal/sicht/stage",
+        "//internal/sicht/store",
+        "//pkg/infer",
+        "//pkg/infer/ollamabackend",
+        "//pkg/stamp",
+        "@com_github_spf13_cobra//:cobra",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":cmd",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "cmd_test",
+    srcs = [
+        "app_test.go",
+        "review_test.go",
+        "stats_test.go",
+    ],
+    deps = [
+        ":cmd",
+        "//internal/sicht/core",
+        "//internal/sicht/doctor",
+        "//internal/sicht/store",
+    ],
+)

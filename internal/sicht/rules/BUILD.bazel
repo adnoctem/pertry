@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "rules",
+    srcs = [
+        "input.go",
+        "plan.go",
+        "rules.go",
+        "run.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/rules",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/sicht/config",
+        "//internal/sicht/meta",
+        "//internal/sicht/store",
+        "@com_github_expr_lang_expr//:expr",
+        "@com_github_expr_lang_expr//vm",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":rules",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "rules_test",
+    srcs = [
+        "rules_test.go",
+        "run_test.go",
+    ],
+    deps = [
+        ":rules",
+        "//internal/sicht/config",
+        "//internal/sicht/store",
+    ],
+)

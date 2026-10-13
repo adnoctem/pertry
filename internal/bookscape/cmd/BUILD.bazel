@@ -1,0 +1,64 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cmd",
+    srcs = [
+        "app.go",
+        "audit.go",
+        "check.go",
+        "classify.go",
+        "dedupe.go",
+        "errors.go",
+        "export.go",
+        "import.go",
+        "review.go",
+        "stats.go",
+        "version.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/bookscape/cmd",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bookscape/audit",
+        "//internal/bookscape/classify",
+        "//internal/bookscape/config",
+        "//internal/bookscape/dedupe",
+        "//internal/bookscape/export",
+        "//internal/bookscape/liveness",
+        "//internal/bookscape/netscape",
+        "//internal/bookscape/review",
+        "//internal/bookscape/store",
+        "//pkg/infer",
+        "//pkg/infer/anthropicbackend",
+        "//pkg/infer/ollamabackend",
+        "//pkg/infer/openaibackend",
+        "//pkg/stamp",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":cmd",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "cmd_test",
+    srcs = [
+        "app_test.go",
+        "audit_test.go",
+        "check_test.go",
+        "classify_test.go",
+        "dedupe_test.go",
+        "export_test.go",
+        "import_test.go",
+        "review_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    deps = [
+        ":cmd",
+        "//internal/bookscape/classify",
+        "//pkg/infer",
+        "@org_modernc_sqlite//:sqlite",
+    ],
+)

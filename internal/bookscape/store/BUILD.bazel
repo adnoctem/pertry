@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "store",
+    srcs = [
+        "classify.go",
+        "dedupe.go",
+        "export.go",
+        "import.go",
+        "liveness.go",
+        "review.go",
+        "stats.go",
+        "store.go",
+    ],
+    embedsrcs = ["migrations/0001_initial.sql"],
+    importpath = "github.com/adnoctem/pertry/internal/bookscape/store",
+    visibility = ["//:__subpackages__"],
+    deps = ["@org_modernc_sqlite//:sqlite"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":store",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "store_test",
+    srcs = ["store_test.go"],
+    deps = [
+        ":store",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

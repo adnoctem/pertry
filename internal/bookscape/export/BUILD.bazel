@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "export",
+    srcs = [
+        "export.go",
+        "linkwarden.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/bookscape/export",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bookscape/config",
+        "//internal/bookscape/netscape",
+        "//internal/bookscape/store",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":export",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "export_test",
+    srcs = [
+        "export_test.go",
+        "linkwarden_test.go",
+    ],
+    deps = [
+        ":export",
+        "//internal/bookscape/config",
+        "//internal/bookscape/netscape",
+        "//internal/bookscape/store",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

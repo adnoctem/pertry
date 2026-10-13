@@ -1,0 +1,95 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "doctor",
+    srcs = [
+        "checks.go",
+        "doctor.go",
+        "freespace_unix.go",
+        "freespace_windows.go",
+        "memory_linux.go",
+        "memory_other.go",
+        "mounts_linux.go",
+        "mounts_other.go",
+        "run.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/doctor",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//pkg/infer",
+        "//pkg/infer/ollamabackend",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:aix": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:android": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:illumos": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:js": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:osx": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:plan9": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@org_golang_x_sys//windows",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":doctor",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "doctor_test",
+    srcs = [
+        "doctor_test.go",
+        "mounts_linux_test.go",
+    ],
+    embed = [":doctor"],
+    deps = [
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//pkg/infer",
+        "//pkg/infer/ollamabackend",
+    ],
+)

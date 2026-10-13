@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "sicht_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/adnoctem/pertry/cmd/sicht",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/sicht/cmd",
+        "//pkg/stamp",
+    ],
+)
+
+go_binary(
+    name = "sicht",
+    embed = [":sicht_lib"],
+    visibility = ["//visibility:public"],
+)

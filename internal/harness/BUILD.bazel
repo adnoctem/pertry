@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "harness",
+    srcs = ["harness.go"],
+    importpath = "github.com/adnoctem/pertry/internal/harness",
+    visibility = ["//:__subpackages__"],
+    deps = ["@org_modernc_sqlite//:sqlite"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":harness",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "harness_test",
+    srcs = ["harness_test.go"],
+    deps = [":harness"],
+)

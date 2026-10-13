@@ -1,0 +1,10 @@
+# configure Trivy
+# ref: https://trivy.dev/docs/guide/references/configuration/config-file/
+# testdata trees are Go test fixtures (synthetic bookmark exports, synthetic images), not
+# deployable artifacts - Trivy's misconfiguration scanners have no business validating them.
+# skip-dirs needs a glob (a bare directory name only matches at the scan root, not nested
+# paths like internal/bookscape/netscape/testdata).
+scan:
+  # Same as '--skip-dirs'
+  skip-dirs:
+    - "**/testdata/**"

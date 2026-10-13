@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "apply",
+    srcs = [
+        "apply.go",
+        "companion.go",
+        "target.go",
+        "undo.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/apply",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/fsops",
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//internal/sicht/manifest",
+        "//internal/sicht/meta",
+        "//internal/sicht/rules",
+        "//internal/sicht/store",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":apply",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "apply_test",
+    srcs = ["apply_test.go"],
+    deps = [
+        ":apply",
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//internal/sicht/manifest",
+        "//internal/sicht/store",
+    ],
+)

@@ -1,0 +1,22 @@
+[files]
+extend-exclude = []
+
+[default]
+# Google Takeout truncates a sidecar's name to 51 characters, which cuts
+# ".supplemental-metadata.json" to ".supplemental-metadat.json" and shorter - so "metadat" and
+# every shorter prefix are the real names on disk, measured against a real export, not
+# misspellings of "metadata". internal/sicht/meta/sidecar.go has to match all of them.
+extend-ignore-re = ["supplementa?l?-?m?e?t?a?d?a?t?a?"]
+# "sicht" is German (sichten, "to sift through") and is the project name, not a typo for
+# "sight". "netscape" is the Netscape Bookmark File Format, which bookscape both reads and
+# writes verbatim. "PNGs" splits into "PN" + "Gs", and typos "corrects" PN to ON.
+extend-ignore-identifiers-re = [".*[Ss]icht.*", ".*[Nn]etscape.*", "PNGs?", ".*[Ll]inkwarden.*", ".*[Mm]eili.*"]
+
+[default.extend-identifiers]
+sicht = "sicht"
+Sicht = "Sicht"
+# ANC_GITHUB_TOKEN is the organisation's release identity: ANC is Ad Noctem Collective, not a
+# misspelling of AND. It appears in prose as well as in the workflows, and the workflows are
+# excluded from this hook by extension.
+ANC = "ANC"
+ANC_GITHUB_TOKEN = "ANC_GITHUB_TOKEN"

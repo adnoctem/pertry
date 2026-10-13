@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "liveness",
+    srcs = ["liveness.go"],
+    importpath = "github.com/adnoctem/pertry/internal/bookscape/liveness",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/bookscape/config",
+        "//internal/bookscape/store",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":liveness",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "liveness_test",
+    srcs = ["liveness_test.go"],
+    deps = [
+        ":liveness",
+        "//internal/bookscape/config",
+        "//internal/bookscape/store",
+    ],
+)

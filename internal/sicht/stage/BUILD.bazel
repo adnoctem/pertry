@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "stage",
+    srcs = [
+        "runner.go",
+        "stage.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/stage",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/sicht/confidence",
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//internal/sicht/imageprep",
+        "//internal/sicht/rules",
+        "//internal/sicht/schema",
+        "//internal/sicht/store",
+        "//pkg/infer",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":stage",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "stage_test",
+    srcs = ["stage_test.go"],
+    deps = [
+        ":stage",
+        "//internal/sicht/config",
+        "//internal/sicht/core",
+        "//internal/sicht/store",
+        "//pkg/infer",
+    ],
+)

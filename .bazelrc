@@ -1,0 +1,55 @@
+# Copyright (c) 2026 The Ad Noctem Collective pertry Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# Bazel 9 removed WORKSPACE entirely, so Bzlmod is the only module system and needs no opt-in
+# flag. gopskit still carries `common --enable_bzlmod` from its Bazel 7 days; under Bazel 9 that
+# flag is accepted but does nothing, so it is deliberately absent here rather than kept as dead
+# configuration.
+
+# No cgo, repo-wide (docs/CONTRIBUTING.md section 3). This is the enforcement point: `pure`
+# makes rules_go build every go_library and go_binary without a C toolchain, so a dependency
+# that needs cgo fails the build here rather than at release time on the windows/amd64
+# cross-compile. SQLite is modernc.org/sqlite precisely so this can hold.
+build --@io_bazel_rules_go//go/config:pure
+
+build --workspace_status_command=$(pwd)/scripts/bazel-create-status.sh
+build --verbose_failures
+
+test --test_env=HOME
+test --test_output=errors
+
+# Race-instrumented test run, as a named config rather than a default.
+#
+# rules_go's race instrumentation requires cgo, so it cannot be combined with the global `pure`
+# above: enabling both fails at analysis time with "race instrumentation can't be enabled when
+# cgo is disabled". This config therefore turns `pure` off for the duration of the run.
+#
+# That is not a back door into the cgo ban. `pure` stays on for every ordinary build and for both
+# release platforms below, which is what the ban exists to protect - no first-party source imports
+# "C", and the windows/amd64 cross-compile never sees this config. What it buys is a race detector
+# over the concurrent parts (the scan walker, the stage runner, the review server), which would
+# otherwise not be testable for races at all.
+test:race --@io_bazel_rules_go//go/config:pure=false
+test:race --@io_bazel_rules_go//go/config:race
+
+# Release platforms. Both are built in CI; windows/amd64 is a hard requirement for sicht
+# (docs/CONTRIBUTING.md) and the reason the cgo ban exists.
+build:linux-amd64 --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+build:windows-amd64 --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64

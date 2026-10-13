@@ -1,0 +1,80 @@
+# Linkwarden stack for the end-to-end import test. Brought up and torn down by stack.go; see
+# tests/README.md to run it by hand.
+#
+# Differences from upstream's docker-compose.yml, all deliberate:
+#
+#   - Images are pinned. v2.16.3 is the version whose importFromHTMLFile.ts was read to write the
+#     test's assertions, so :latest would silently change the behaviour under test.
+#   - Named volumes instead of upstream's ./pgdata, ./data and ./meili_data bind mounts, so a test
+#     run writes nothing into the repository and `down -v` actually removes the state.
+#   - Healthchecks, which upstream does not define. The postgres one removes a whole class of
+#     flake where Prisma migrates against a database that is not listening yet and the linkwarden
+#     container crash-loops.
+#   - The published port is injected, never 3000, so a developer's own Linkwarden keeps its port.
+#   - The two Docker Hub images are pulled through mirror.gcr.io. Anonymous Docker Hub pulls are
+#     rate limited per IP (HTTP 429), which bites on shared CI runners and bit during development
+#     of this file. mirror.gcr.io is a pull-through cache of the same digests, needs no
+#     credentials, and is not subject to that limit - so the test needs no registry secret.
+#     linkwarden itself comes from ghcr.io, which has no comparable anonymous limit.
+#   - No secrets have defaults or literals here. stack.go generates all three per run from
+#     crypto/rand, which keeps gitleaks quiet and isolates runs from each other.
+#
+# NEXT_PUBLIC_DEMO is deliberately absent: setting it refuses imports outright.
+# NEXT_PUBLIC_ADMIN is deliberately unset, so it keeps its default of 1 and the first registered
+# user is the admin.
+
+services:
+  postgres:
+    image: mirror.gcr.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  meilisearch:
+    image: mirror.gcr.io/getmeili/meilisearch:v1.13.3
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?required}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili:/meili_data
+    healthcheck:
+      # The image does ship curl, so this probes the server's real readiness endpoint rather than
+      # merely proving the binary exists.
+      test: ["CMD", "curl", "-fsS", "http://localhost:7700/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  linkwarden:
+    image: ghcr.io/linkwarden/linkwarden:v2.16.3
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?required}@postgres:5432/postgres
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?required}
+      # NextAuth validates the request host against this, so it has to carry the port we publish.
+      NEXTAUTH_URL: http://localhost:${LINKWARDEN_PORT:?required}/api/v1/auth
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?required}
+      # Both stated rather than left to their defaults, so this file documents what the test
+      # relies on: registration has to work, and the fixture has to fit.
+      NEXT_PUBLIC_DISABLE_REGISTRATION: "false"
+      IMPORT_LIMIT: "10"
+    ports:
+      - "127.0.0.1:${LINKWARDEN_PORT:?required}:3000"
+    volumes:
+      - data:/data/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  meili:
+  data:

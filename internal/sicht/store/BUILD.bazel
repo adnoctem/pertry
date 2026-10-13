@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "store",
+    srcs = [
+        "files.go",
+        "results.go",
+        "store.go",
+    ],
+    embedsrcs = ["migrations/0001_initial.sql"],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/store",
+    visibility = ["//:__subpackages__"],
+    deps = ["@org_modernc_sqlite//:sqlite"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":store",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "store_test",
+    srcs = [
+        "files_test.go",
+        "results_test.go",
+        "store_test.go",
+    ],
+    deps = [":store"],
+)

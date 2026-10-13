@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "schema",
+    srcs = [
+        "schema.go",
+        "validate.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/schema",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/sicht/config"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":schema",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "schema_test",
+    srcs = ["schema_test.go"],
+    deps = [
+        ":schema",
+        "//internal/sicht/config",
+    ],
+)

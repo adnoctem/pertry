@@ -1,0 +1,39 @@
+# Copyright Ad Noctem Collective
+# SPDX-License-Identifier: MIT
+
+name: 🚀 Feature request
+description: Suggest an idea for this project
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Each application's scope and known limitations are described in `docs/ARCHITECTURE.md`,
+        and planned work is listed in `docs/TODO.md`. Please check both first - a request that
+        the scope rules out needs an argument against that decision rather than a restatement of
+        the request.
+
+        Two decisions in particular are settled rather than open: sicht runs inference locally and
+        sends nothing off the machine, and bookscape emits the same format it reads rather than
+        converting between bookmark formats.
+  - type: dropdown
+    attributes:
+      label: Which application?
+      options:
+        - sicht (image sorter)
+        - bookscape (bookmark pipeline)
+        - shared pkg/ or build harness
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What problem does this solve?
+      description: The situation you are in, rather than the implementation you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What solution would you suggest?
+  - type: textarea
+    attributes:
+      label: What alternatives have you considered?

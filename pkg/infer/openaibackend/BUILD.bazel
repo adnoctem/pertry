@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "openaibackend",
+    srcs = ["openai.go"],
+    importpath = "github.com/adnoctem/pertry/pkg/infer/openaibackend",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/infer",
+        "@com_github_openai_openai_go_v3//:openai-go",
+        "@com_github_openai_openai_go_v3//option",
+        "@com_github_openai_openai_go_v3//responses",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":openaibackend",
+    visibility = ["//visibility:public"],
+)

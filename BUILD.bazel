@@ -1,0 +1,15 @@
+# Root package: Gazelle configuration and directives only. Everything else lives under
+# cmd/, internal/ and pkg/.
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/adnoctem/pertry
+gazelle(name = "gazelle")
+
+# make sure that others can import either using the import or go_default_library naming conventions
+# gazelle:go_naming_convention import_alias
+
+# tests/ holds end-to-end tests that bring up containers and talk to a Docker daemon. They have no
+# business in a hermetic build - the sandbox would block the Docker socket anyway - so gazelle is
+# told not to descend and they never appear in //... . They run only via
+# `go test -tags e2e ./tests/...`; see tests/README.md.
+# gazelle:exclude tests

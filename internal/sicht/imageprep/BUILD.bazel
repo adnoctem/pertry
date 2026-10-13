@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "imageprep",
+    srcs = ["imageprep.go"],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/imageprep",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//pkg/infer",
+        "@org_golang_x_image//draw",
+        "@org_golang_x_image//webp",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":imageprep",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "imageprep_test",
+    srcs = ["imageprep_test.go"],
+    deps = [":imageprep"],
+)

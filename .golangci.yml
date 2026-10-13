@@ -1,0 +1,61 @@
+version: "2"
+
+run:
+  timeout: 5m
+  # Lint the build-tagged end-to-end tests too. Without this they are invisible to the linter,
+  # which is how unreviewed code accumulates in exactly the place nobody runs by default.
+  # `e2e` is tests/ (needs a Docker daemon); `integration` is reserved for tests needing a local
+  # binary such as exiftool or a running Ollama - see docs/CONTRIBUTING.md.
+  build-tags:
+    - e2e
+    - integration
+
+linters:
+  default: standard
+  enable:
+    - unused
+    - unconvert
+    - misspell
+    - gocritic
+    # Both applications wrap errors with %w and return them rather than panicking, and an
+    # unchecked error in a store call is exactly the class of bug that shows up as silent data
+    # loss - a manifest half written, a classification not recorded.
+    - errorlint
+    # bookscape's `check` makes one outbound request per bookmark; a leaked body there leaks a
+    # connection per link, over a thousand of them.
+    - bodyclose
+    # Contexts are threaded through every store and inference call. A dropped one defeats the
+    # cancellation a long scan or model pass deliberately checks for, which is the difference
+    # between Ctrl-C stopping a ten-thousand-image run and it carrying on.
+    - contextcheck
+    - nilerr
+    - wastedassign
+    - perfsprint
+
+  settings:
+    perfsprint:
+      # perfsprint's other checks are real: a concatenation in a loop is quadratic, and
+      # strconv is both faster and clearer than a one-verb Sprintf. `string-format` is the
+      # exception - it wants `fmt.Sprintf("%s is not writable", dir)` written as a
+      # concatenation, which in a diagnostic message is less readable for a saving that does
+      # not exist in a command that then waits on SQLite or a vision model.
+      string-format: false
+
+    errcheck:
+      # Writes to a command's own stdout or stderr. A failed write there is not recoverable -
+      # the output is the result, and if it cannot be written there is nowhere to report that -
+      # so checking each one would add a branch per line of CLI output for no behaviour. Every
+      # other unchecked error is still a finding.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "anthropicbackend",
+    srcs = ["anthropic.go"],
+    importpath = "github.com/adnoctem/pertry/pkg/infer/anthropicbackend",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/infer",
+        "@com_github_anthropics_anthropic_sdk_go//:anthropic-sdk-go",
+        "@com_github_anthropics_anthropic_sdk_go//option",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":anthropicbackend",
+    visibility = ["//visibility:public"],
+)

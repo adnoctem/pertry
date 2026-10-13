@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_test(
+    name = "netscape_test",
+    srcs = [
+        "library_test.go",
+        "netscape_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    deps = [
+        ":netscape",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_virtualtam_netscape_go_v2//:netscape-go",
+    ],
+)
+
+go_library(
+    name = "netscape",
+    srcs = ["netscape.go"],
+    importpath = "github.com/adnoctem/pertry/internal/bookscape/netscape",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_virtualtam_netscape_go_v2//:netscape-go"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":netscape",
+    visibility = ["//:__subpackages__"],
+)

@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "manifest",
+    srcs = ["manifest.go"],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/manifest",
+    visibility = ["//:__subpackages__"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":manifest",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "manifest_test",
+    srcs = ["manifest_test.go"],
+    deps = [":manifest"],
+)

@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "infer",
+    srcs = [
+        "fake.go",
+        "infer.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/pkg/infer",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":infer",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "infer_test",
+    srcs = ["infer_test.go"],
+    deps = [
+        ":infer",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

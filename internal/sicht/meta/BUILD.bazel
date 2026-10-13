@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "meta",
+    srcs = [
+        "exiftool.go",
+        "sidecar.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/sicht/meta",
+    visibility = ["//:__subpackages__"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":meta",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "meta_test",
+    srcs = [
+        "exiftool_test.go",
+        "sidecar_test.go",
+    ],
+    deps = [":meta"],
+)
