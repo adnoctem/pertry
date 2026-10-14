@@ -23,7 +23,7 @@ if ! declare -F lib::opt::parse >/dev/null || ! declare -F lib::log::print_succe
 	exit 1
 fi
 
-# Both applications are released for the two platforms the cgo ban exists to keep buildable:
+# Every application is released for the two platforms the cgo ban exists to keep buildable:
 # linux/amd64 covers WSL2 and native Linux, and windows/amd64 is a hard requirement rather than a
 # nicety (docs/CONTRIBUTING.md). Keep this in step with the --config entries in
 # .bazelrc and the cross-compile matrix in .github/workflows/testing.yaml.
@@ -180,7 +180,7 @@ function release_create::build_target() {
 }
 
 #######################################
-# Package the staged binaries of one target: one tarball per application and one carrying both,
+# Package the staged binaries of one target: one tarball per application and one carrying all,
 # each with the LICENSE and the README alongside the executable.
 # Arguments:
 #   1 - the target as <os>/<arch>
@@ -225,7 +225,7 @@ function release_create::package() {
 		lib::log::print_info "  ${name}_${goos}_${goarch}.tar.gz"
 	done
 
-	# And one carrying both, since they share a monorepo and a version.
+	# And one carrying all of them, since they share a monorepo and a version.
 	tar -czf "${output}/pertry_${goos}_${goarch}.tar.gz" "${ownership[@]}" \
 		-C "${staging}" "${members[@]}" \
 		-C "${ROOT_DIR}" LICENSE README.md

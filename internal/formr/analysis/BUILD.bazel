@@ -1,0 +1,38 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "analysis",
+    srcs = [
+        "analysis.go",
+        "trace.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/formr/analysis",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/formr/addr",
+        "//internal/formr/diag",
+        "//internal/formr/module",
+        "//internal/formr/schema",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":analysis",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "analysis_test",
+    srcs = ["analysis_test.go"],
+    deps = [
+        ":analysis",
+        "//internal/formr/formrtest",
+        "//internal/formr/module",
+        "//internal/formr/schema",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

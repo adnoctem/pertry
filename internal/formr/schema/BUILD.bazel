@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "schema",
+    srcs = [
+        "engine.go",
+        "inventory.go",
+        "lock.go",
+        "snapshot.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/formr/schema",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/formr/addr",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_hashicorp_terraform_json//:terraform-json",
+        "@com_github_zclconf_go_cty//cty",
+        "@com_github_zclconf_go_cty//cty/json",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":schema",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "schema_test",
+    srcs = [
+        "helpers_test.go",
+        "inventory_test.go",
+    ],
+    deps = [
+        ":schema",
+        "//internal/formr/addr",
+        "//internal/formr/formrtest",
+    ],
+)

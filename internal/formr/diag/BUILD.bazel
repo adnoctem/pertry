@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "diag",
+    srcs = ["diag.go"],
+    importpath = "github.com/adnoctem/pertry/internal/formr/diag",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_hashicorp_hcl_v2//:hcl"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":diag",
+    visibility = ["//:__subpackages__"],
+)

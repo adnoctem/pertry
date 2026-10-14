@@ -1,9 +1,10 @@
 # pertry Architecture
 
-This repository contains two local-first command-line applications written in Go, built and released together:
-[`bookscape`][bookscape_readme], a bookmark archival and enrichment pipeline that emits for Linkwarden; and
+This repository contains three local-first command-line applications written in Go, built and released together:
+[`bookscape`][bookscape_readme], a bookmark archival and enrichment pipeline that emits for Linkwarden;
 [`sicht`][sicht_readme], an iterative image sorter that uses metadata rules first and a local vision model for the
-rest. Each is a single static executable for Linux and Windows.
+rest; and [`formr`][formr_readme], which reports how completely a Terraform module exposes the provider schemas it
+uses. Each is a single static executable for Linux and Windows.
 
 This document describes how the applications work, what they share, and where their limits are. Each application
 README owns its installation, configuration and command reference. [Contributing][contributing] owns the
@@ -14,6 +15,7 @@ boundaries. Measurements that informed the defaults are published under [Benchma
 - [Shared Architecture](#shared-architecture)
 - [bookscape](#bookscape)
 - [sicht](#sicht)
+- [formr](#formr)
 - [Build and Distribution](#build-and-distribution)
 - [Privacy Notes](#privacy-notes)
 
@@ -25,6 +27,7 @@ boundaries. Measurements that informed the defaults are published under [Benchma
 │   ├── bookscape/            # netscape, store, audit, dedupe, liveness, classify, review, export, config, cmd
 │   ├── sicht/                # core, config, store, meta, scan, rules, schema, stage, confidence, imageprep,
 │   │                         # apply, manifest, doctor, bench, cmd
+│   ├── formr/                # addr, diag, module, schema, analysis, report, cmd, formrtest
 │   ├── fsops/                # Verified move and copy with a cross-volume fallback
 │   └── harness/              # Build-time checks for the SQLite driver and the cgo-free build
 ├── pkg/
@@ -37,7 +40,7 @@ boundaries. Measurements that informed the defaults are published under [Benchma
 ```
 
 The Go module path is `github.com/adnoctem/pertry`. Application code lives in `internal/<app>`; a package moves to
-`pkg/` only when both applications use it. `internal/sicht/core` imports neither the CLI nor any other frontend, so
+`pkg/` only when more than one application uses it. `internal/sicht/core` imports neither the CLI nor any other frontend, so
 a frontend is a thin layer over it. Neither application holds global state: the CLI builds its state once per
 invocation and passes it explicitly.
 
@@ -45,28 +48,29 @@ invocation and passes it explicitly.
 
 ### Process Model
 
-Both applications are short-lived command-line programs. Each subcommand reads and writes a local SQLite database,
-does its work and exits; there is no daemon and no network listener. The pipelines are split into subcommands that
+All three applications are short-lived command-line programs; there is no daemon and no network listener.
+bookscape and sicht keep their state in a local SQLite database that each subcommand reads and writes before it
+exits. formr keeps no state: each run reads a module and its provider schemas and produces a report. The pipelines are split into subcommands that
 can each be re-run, resumed or re-scoped without repeating the others, and every slow stage persists results as it
 completes them, so an interrupted run keeps its progress.
 
-Both follow the same order of work: deterministic rules first, a model only for what rules cannot decide, and a
+bookscape and sicht follow the same order of work: deterministic rules first, a model only for what rules cannot decide, and a
 human review step that gates the irreversible one — `bookscape review` gates `export`, `sicht review` gates
-`apply`. Neither application deletes user data.
+`apply`. No application deletes user data.
 
 Exit codes distinguish a usage error from a failed run:
 
-| Code | bookscape     | sicht                                       |
-| ---- | ------------- | ------------------------------------------- |
-| `0`  | success       | success                                     |
-| `1`  | generic error | generic error                               |
-| `2`  | usage error   | usage error                                 |
-| `3`  | —             | environment not ready (`doctor` has a fail) |
-| `4`  | —             | partial failure (some items failed)         |
+| Code | bookscape     | sicht                                       | formr                                              |
+| ---- | ------------- | ------------------------------------------- | -------------------------------------------------- |
+| `0`  | success       | success                                     | success                                            |
+| `1`  | generic error | generic error                               | report drift or coverage-policy failure            |
+| `2`  | usage error   | usage error                                 | usage, engine, parse or unsupported-analysis error |
+| `3`  | —             | environment not ready (`doctor` has a fail) | —                                                  |
+| `4`  | —             | partial failure (some items failed)         | —                                                  |
 
 ### Storage
 
-Both applications store state in SQLite through `modernc.org/sqlite`, a pure-Go implementation registered under
+bookscape and sicht store state in SQLite through `modernc.org/sqlite`, a pure-Go implementation registered under
 the driver name `sqlite`. Databases run in WAL mode with foreign keys enforced, and schema migrations are embedded
 in the binary and applied on open.
 
@@ -105,7 +109,7 @@ counts as not local, and an unreachable server reports nothing.
 ### Build Metadata
 
 `pkg/stamp` holds the version, commit, branch, build date, build platform and Go toolchain, injected at link time.
-Both applications report it with `<app> version [--json]`, which works without a database or a valid configuration.
+Every application reports it with `<app> version [--json]`, which works without a database or a valid configuration.
 An unstamped development build reports `redacted` for every field and says so.
 
 ## bookscape
@@ -565,6 +569,114 @@ configurable. A CPU-only Ollama build shows up in the `vram` check.
   Linux and WSL.
 - Only Ollama is supported as an inference backend.
 
+## formr
+
+### formr Scope
+
+formr reads a Terraform module's native-syntax configuration and the schemas of the providers it uses, and writes
+`SCHEMA.md`: every field of every provider configuration, resource and data source the module tree uses, and what the
+module does with each. `formr check` regenerates the report in memory, compares it with the committed one and
+evaluates a coverage policy. formr is a development tool. It never configures a provider, refreshes, plans or
+applies, and it never prints a value from the module.
+
+In scope are the analysed root and every local child module it calls (`./` or `../` sources); each call is its own
+scope, so two calls to one directory are reported separately. Every resource and data-source type the tree declares
+is inventoried in full, including fields the HCL never mentions; provider types the module does not declare are
+not. Examples and tests are separate roots and are not part of a module's report.
+
+### Schema Acquisition
+
+Schemas come from `<engine> providers schema -json` run in the module directory, where the engine is `terraform`,
+`tofu` or a path given with `--engine`. formr calls the executable with `os/exec` and passes `TF_IN_AUTOMATION=1`
+and `TF_INPUT=0`, with a per-command timeout. `--init` first runs `init -backend=false -input=false`, which installs
+what the lock file selects without upgrading. Alternatively `--schema-file` reads a snapshot written by
+`formr snapshot`, and no engine runs.
+
+Provider releases come from `.terraform.lock.hcl`, not from the schema's numeric `version`, which is the provider's
+state-schema version. A snapshot carries the engine and the releases with it; a bare `providers schema -json`
+document is accepted with a warning that its provenance is unknown. Only schema `format_version` 1.x is read.
+
+### Inventory and Fingerprints
+
+The inventory is recursive over attributes, nested blocks in every nesting mode, nested-type attributes, and object
+types written in an attribute's `type`. Field paths are typed segments, rendered as `network[].ip` for a collection
+element, `labels{}` for a map element and `timeouts.create` for a nested field. Containers are listed as rows, and
+every count in the report is over leaves, so a block is not counted twice.
+
+Each node carries a fingerprint: the first 12 hex digits of a SHA-256 over the node's raw schema JSON with
+`description`, `description_kind` and `deprecation_message` removed and keys sorted. A reworded description does not
+change it; a changed type, flag, nesting mode or nested field does, as does any schema key formr does not itself
+model.
+
+### Expression Tracing
+
+For each field a declaration sets, formr traces the expression back to its origins: an input variable of the
+analysed root, or an attribute of another declaration. The trace follows locals, child-module arguments and outputs,
+`dynamic` blocks with default or custom iterators, `for_each` and `each`, conditionals, tuple and object
+constructors, `for` expressions, splats and index steps, and a fixed list of built-in functions:
+
+| Functions                                                    | Treatment                                                              |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `try`, `coalesce`, `sensitive`, `nonsensitive`               | Any argument may pass through unchanged                                |
+| `tolist`, `toset`, `tomap`, `one`, `element`, `lookup`       | Values pass through; the collection type changes                       |
+| `merge`, `concat`                                            | Arguments are combined; literal keys in `merge` are reported as forced |
+| Other pure built-ins (`tonumber`, `yamlencode`, `length`, …) | The result depends on the arguments but is not one of them             |
+| `file`, `templatefile` and other file functions              | Unresolved: formr reads no files                                       |
+| Provider functions and any built-in not listed               | Unresolved                                                             |
+
+Count and `for_each` expressions are traced separately, including what only selects or gates a value, and reported
+once per declaration. A variable that only decides whether a resource exists is therefore never listed as an origin
+of that resource's fields. A resource inside a module called with `count` or `for_each` is reported as conditional.
+
+### Field Classification
+
+| Configurable field | Meaning                                                                          |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `direct`           | One input variable reaches the field unchanged                                   |
+| `transformed`      | Input variables reach it through a function or operator, or several are combined |
+| `derived`          | Another declaration's attribute reaches it                                       |
+| `fixed`            | Set, but no input reaches it                                                     |
+| `omitted`          | Not set                                                                          |
+| `unresolved`       | Something on the way could not be followed; never counted as covered             |
+| `caller-owned`     | A provider configuration field, set by whoever configures the provider           |
+
+Computed-only fields have no input classification. A set field is `conditional` when a condition or a `dynamic`
+block's `for_each` decides whether it is set, and `coupled` when one variable drives several fields of the same
+declaration directly. Readable fields are `exported` when a root output reaches them, `partially-exported` when a
+root output reaches part of a container or one element of a leaf, `internal` when another declaration, local or
+condition reads them, and `unused` otherwise. Write-only fields have no result classification.
+
+A provider configuration that the tree does not declare a `provider` block for is caller-owned. An aliased
+configuration that nothing binds — no provider block, no `configuration_aliases`, no `providers` mapping — is an
+error.
+
+### Report and Policy
+
+`SCHEMA.md` lists provenance, a summary of the leaf counts, diagnostics, every provider configuration and every
+declaration, sorted by identity. It contains no timestamps, absolute paths or line numbers, and identical input
+produces identical bytes regardless of file names or order. Tables are padded as Prettier pads them. Diagnostics
+are printed to standard error with their source ranges.
+
+`formr check` fails when the committed report differs from the regenerated one, and evaluates the `default` policy
+against the regenerated analysis: the inventory is complete and no field is unresolved. Rewriting the report cannot
+make a policy failure pass.
+
+### formr Known Limitations
+
+- **Exceptions and the `complete-resource-interface` policy are not implemented.** Every omitted or unresolved
+  field is marked `needs-review`, and there is no way yet to record that an omission is intended.
+- **Remote child modules, `.tf.json` files and override files are not analysed.** Each is reported as an error that
+  makes the inventory incomplete.
+- **Ephemeral resources, actions and provider functions** referenced by a module are not inventoried; a provider
+  function in an expression is unresolved.
+- **A traced reference is evidence of a dependency, not proof** that a caller controls the field's whole domain.
+  Validation rules, type conversions and defaults are not evaluated.
+- **The report covers the provider releases it was generated with.** It says nothing about other releases the
+  module's version constraints allow.
+- formr has been run against Terraform. The OpenTofu path uses the same commands and has not been exercised.
+- A module whose provider configurations must be passed in through `configuration_aliases` cannot always be
+  initialised on its own; formr does not yet build a schema-only root for it.
+
 ## Build and Distribution
 
 ### Build System
@@ -580,11 +692,11 @@ Bash, Git and coreutils.
 
 ### Release Artifacts
 
-`scripts/release-create.sh` builds both applications for `linux/amd64` and `windows/amd64` and packages, per
+`scripts/release-create.sh` builds every application for `linux/amd64` and `windows/amd64` and packages, per
 target:
 
 - `<app>_<os>_<arch>.tar.gz` with one binary, `LICENSE` and `README.md`;
-- `pertry_<os>_<arch>.tar.gz` with both binaries;
+- `pertry_<os>_<arch>.tar.gz` with every binary;
 - `CHECKSUMS_SHA256.txt` covering every tarball.
 
 Binaries inside an archive carry their bare command name (`sicht`, or `sicht.exe` on Windows), and archive entries
@@ -604,7 +716,7 @@ rebuilding. The release procedure is in [Contributing][contributing_releases].
 
 ### Platform Support
 
-Both applications are supported on `linux/amd64`, including WSL2, and `windows/amd64`. sicht expects its workspace
+Every application is supported on `linux/amd64`, including WSL2, and `windows/amd64`. sicht expects its workspace
 on the native filesystem of the system it runs on — ext4 under WSL, NTFS under Windows — since a Windows drive
 reached from WSL is markedly slower. Under WSL with a Windows-hosted Ollama, mirrored networking is required for
 loopback to reach it.
@@ -617,7 +729,10 @@ loopback to reach it.
 - **bookscape** contacts every bookmarked host during `check`, which reveals the bookmark list to those hosts and to
   the network path. The model pass sends URLs, titles and folder paths to the configured provider; with
   `classify.provider: ollama` nothing leaves the machine.
-- **Neither application** collects data, and both store their databases locally. Bookmark exports and image
+- **formr** reads the module directory and runs the configured Terraform or OpenTofu executable in it. With
+  `--init` that executable may download providers and modules from their registries; without it, formr makes no
+  network calls of its own. It never configures a provider, so no provider talks to its API.
+- **No application** collects data, and bookscape and sicht store their databases locally. Bookmark exports and image
   archives are personal data, and in an image archive often other people's; the repository's test fixtures are
   synthetic.
 
@@ -625,6 +740,7 @@ loopback to reach it.
 
 [bookscape_readme]: ../cmd/bookscape/README.md
 [sicht_readme]: ../cmd/sicht/README.md
+[formr_readme]: ../cmd/formr/README.md
 [contributing]: CONTRIBUTING.md
 [contributing_releases]: CONTRIBUTING.md#-releases
 [security]: SECURITY.md

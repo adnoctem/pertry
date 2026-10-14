@@ -11,7 +11,7 @@ go_library(
     # scripts/release-create.sh passes. An unstamped build leaves the Go defaults ("redacted")
     # in place, which is why stamp.go sets them to something printable rather than to "".
     #
-    # x_defs sits on the library rather than on each go_binary so that both binaries are stamped
+    # x_defs sits on the library rather than on each go_binary so that every binary is stamped
     # from one place. Adding a stamp needs all three: the variable in stamp.go, the key in the
     # status script, and an entry here. Miss one and the value silently stays "redacted" instead
     # of failing the build.

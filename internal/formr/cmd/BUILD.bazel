@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cmd",
+    srcs = [
+        "app.go",
+        "commands.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/formr/cmd",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/formr/analysis",
+        "//internal/formr/diag",
+        "//internal/formr/module",
+        "//internal/formr/report",
+        "//internal/formr/schema",
+        "//pkg/stamp",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":cmd",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "cmd_test",
+    srcs = ["cmd_test.go"],
+    deps = [
+        ":cmd",
+        "//internal/formr/formrtest",
+    ],
+)

@@ -14,8 +14,8 @@
 [![Renovate](https://img.shields.io/badge/Renovate-enabled-brightgreen?logo=renovate&logoColor=1A1F6C)][renovate]
 [![PreCommit](https://img.shields.io/badge/PreCommit-enabled-brightgreen?logo=precommit&logoColor=FAB040)][precommit]
 
-`pertry` is an open-source [MIT][license]-licensed collection of two local-first applications for taming an
-archive you already have, written in [Go][go]. Each one is a single static executable with no runtime
+`pertry` is an open-source [MIT][license]-licensed collection of local-first command-line applications, written
+in [Go][go]. Each one is a single static executable with no runtime
 dependencies, published for Linux and Windows. The project is built using Google's [Bazel][bazel] build system
 in combination with their first-party [Gazelle][gazelle] `BUILD` file generator.
 
@@ -27,9 +27,12 @@ flat set of collections, and emits a document for import into Linkwarden - it re
 between none, so it is a filter rather than a converter. Tens of thousands of photographs
 in one directory from a phone backup? [`sicht`][sicht] sorts them by sifting: EXIF metadata and deterministic
 rules first, a local vision model only for what the rules cannot decide, a review pass for what the model was
-unsure about, and only then any file movement - recorded in a manifest that can be undone.
+unsure about, and only then any file movement - recorded in a manifest that can be undone. Maintaining Terraform
+modules that are meant to cover a provider's whole API? [`formr`][formr] lists every field of every provider
+resource and data source a module uses, says what the module does with each, and fails CI when that report goes
+stale.
 
-Neither one sends your archive anywhere. `bookscape` talks to the open web to find out whether a bookmarked page
+Neither archive tool sends your archive anywhere. `bookscape` talks to the open web to find out whether a bookmarked page
 still answers, and to a cloud model only if you configure one; `sicht` runs its inference against a locally
 installed [Ollama][ollama] and is wired to nothing else, because an image archive holds other people's faces and
 documents as well as your own.
@@ -37,13 +40,13 @@ documents as well as your own.
 ## ✨ TL;DR
 
 ```shell
-# Install one application - bookscape or sicht - for linux or windows, amd64
+# Install one application - bookscape, sicht or formr - for linux or windows, amd64
 curl -fsSL https://github.com/adnoctem/pertry/releases/latest/download/sicht_linux_amd64.tar.gz \
   | sudo tar -xzf - -C /usr/local/bin sicht
 
-# Or both at once
+# Or all of them at once
 curl -fsSL https://github.com/adnoctem/pertry/releases/latest/download/pertry_linux_amd64.tar.gz \
-  | sudo tar -xzf - -C /usr/local/bin bookscape sicht
+  | sudo tar -xzf - -C /usr/local/bin bookscape sicht formr
 
 # Then check what you got
 sicht version
@@ -61,7 +64,7 @@ tar -xzf sicht_linux_amd64.tar.gz sicht
 Linux and Windows are both supported, on `amd64`. The Windows build is not an afterthought: it is why this
 repository bans cgo outright, and the cross-compile for it is checked on every change. `sicht` additionally
 needs [exiftool][exiftool] and a running [Ollama][ollama] - run `sicht doctor`, which reports on every one of
-its dependencies and says what to do about each.
+its dependencies and says what to do about each. `formr` needs a `terraform` or `tofu` executable.
 
 ## 🛠️ Applications
 
@@ -70,11 +73,13 @@ own README documenting how to install, configure and run it. Here's a quick-refe
 
 - [`bookscape`][bookscape]: a bookmark archival and enrichment pipeline that emits for Linkwarden
 - [`sicht`][sicht]: a local-first iterative image sorter, with a vision model for what rules cannot decide
+- [`formr`][formr]: a provider-schema coverage report and CI check for Terraform modules
 
-Both are pre-release. `bookscape` covers its whole pipeline; `sicht` scans, applies rules, classifies, reviews
-and moves files from the command line, and has no web interface yet.
+All are pre-release. `bookscape` covers its whole pipeline; `sicht` scans, applies rules, classifies, reviews
+and moves files from the command line, and has no web interface yet; `formr` generates and checks reports, and has
+no exception annotations yet.
 
-How each one works, what the two share and where their limits are is described in the [architecture][design].
+How each one works, what they share and where their limits are is described in the [architecture][design].
 
 ### 🔃 Contributing
 
@@ -98,6 +103,7 @@ This project is owned and maintained by [Ad Noctem Collective][org] refer to the
 [cmd]: cmd
 [bookscape]: cmd/bookscape
 [sicht]: cmd/sicht
+[formr]: cmd/formr
 
 <!-- File references -->
 

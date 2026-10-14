@@ -16,6 +16,16 @@
 - [ ] `sicht`'s `content` stage, with the `platform` facet passed as context, a `category` taxonomy and an `action`
       decision (`check_out`, `remember`, `discard`).
 - [ ] Near-duplicate grouping from the stored perceptual hashes, shown in the gallery.
+- [ ] `formr` exception annotations next to the HCL (`# formr:exception field=… policy=…` with a required
+      `# formr:reason`), bound to their declaration and provider, rejecting unknown fields, duplicates, stale
+      references and wildcards; then the `complete-resource-interface` policy that requires a public mapping or an
+      exception for every configurable resource leaf, and an export or an exception for every readable one.
+- [ ] `formr check` comparison by row identity (added, removed and changed fields) instead of by line.
+- [ ] `formr`: a temporary schema-only root for modules whose providers must be passed in through
+      `configuration_aliases`, carrying the lock file's selections.
+- [ ] `formr`: remote child modules resolved from initialised module metadata; `.tf.json` and override files.
+- [ ] Port the Hetzner server module's local API harness (`scripts/test-local-api.py`) to Go with `httptest`,
+      keeping its request and plan assertions; decide whether it belongs to `formr` or to `tests/`.
 - [ ] Opt-in hosted inference for `sicht`, for archives that hold nothing confidential: a `model.provider` key
       defaulting to `ollama`; no use of a non-local backend unless named explicitly, and no fallback to one when
       Ollama is unreachable; a startup warning naming what leaves the machine; `doctor` reporting the provider and
@@ -37,6 +47,10 @@
       import time, against the target instance.
 - [ ] Report Linkwarden's HTML importer upstream: it reads a description from a `<DD>` position no real bookmark
       file uses.
+- [ ] Run `formr` against OpenTofu on the pilot module, and add an `integration`-tagged test of the engine
+      adapter against installed providers.
+- [ ] Generate and review the Hetzner server module's `SCHEMA.md`, then retire its Python coverage script and
+      manifest once `formr check` covers every structural-drift error the script can raise.
 - [ ] Run `sicht` natively on Windows, including `apply` and `undo` across volumes.
 - [ ] Performance: scan 10 000 files in well under ten minutes on an RTX 4080 class machine, excluding exiftool's
       first start.

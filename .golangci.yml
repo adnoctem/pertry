@@ -17,7 +17,7 @@ linters:
     - unconvert
     - misspell
     - gocritic
-    # Both applications wrap errors with %w and return them rather than panicking, and an
+    # The applications wrap errors with %w and return them rather than panicking, and an
     # unchecked error in a store call is exactly the class of bug that shows up as silent data
     # loss - a manifest half written, a classification not recorded.
     - errorlint

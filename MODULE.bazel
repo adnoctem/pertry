@@ -1,4 +1,4 @@
-"""pertry is a monorepo of local-first Go applications: bookscape and sicht"""
+"""pertry is a monorepo of local-first Go applications: bookscape, sicht and formr"""
 
 module(
     name = "pertry",
@@ -27,10 +27,13 @@ use_repo(
     "com_github_anthropics_anthropic_sdk_go",
     "com_github_expr_lang_expr",
     "com_github_google_go_cmp",
+    "com_github_hashicorp_hcl_v2",
+    "com_github_hashicorp_terraform_json",
     "com_github_olekukonko_tablewriter",
     "com_github_openai_openai_go_v3",
     "com_github_spf13_cobra",
     "com_github_virtualtam_netscape_go_v2",
+    "com_github_zclconf_go_cty",
     "in_gopkg_yaml_v3",
     "org_golang_x_image",
     "org_golang_x_sync",

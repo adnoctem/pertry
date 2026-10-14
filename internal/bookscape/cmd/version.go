@@ -8,7 +8,7 @@ import (
 
 // NewVersionCommand builds `bookscape version`.
 //
-// The rendering lives in pkg/stamp so that both binaries in this repository report their build
+// The rendering lives in pkg/stamp so that every binary in this repository reports its build
 // identically - a bug report against one should look like a bug report against the other.
 func NewVersionCommand(a *App) *cobra.Command {
 	var asJSON bool

@@ -5,7 +5,7 @@ name: Release
 # somebody has to dispatch this workflow. Testing can hand it the commit it tested, and the gate
 # below refuses a branch that has moved on since.
 #
-# Two applications, one monorepo, one version. A release publishes one tarball per application
+# Several applications, one monorepo, one version. A release publishes one tarball per application
 # per platform, plus a checksum file, as GitHub release assets - all stamped with the same
 # version.
 on:

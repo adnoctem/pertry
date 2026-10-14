@@ -1,7 +1,7 @@
 # Agent guide — pertry
 
-Agent-facing development guide for this repository: two Go applications, `bookscape` and `sicht`, in one Bazel
-monorepo, MIT licensed, with no cgo, built for `linux/amd64` and `windows/amd64`. [`ARCHITECTURE.md`][architecture]
+Agent-facing development guide for this repository: three Go applications, `bookscape`, `sicht` and `formr`, in one
+Bazel monorepo, MIT licensed, with no cgo, built for `linux/amd64` and `windows/amd64`. [`ARCHITECTURE.md`][architecture]
 describes how they work and [`CONTRIBUTING.md`][contributing] is the canonical workflow; read both before non-trivial
 work. This file records what an agent otherwise gets wrong.
 
@@ -54,8 +54,8 @@ targets cannot resolve a toolchain for that platform; use the script.
 
 ## Architecture and public APIs
 
-- `cmd/<app>` is a thin entrypoint. Application code lives in `internal/<app>`; anything both applications share
-  lives in `pkg/`. There is no global state.
+- `cmd/<app>` is a thin entrypoint. Application code lives in `internal/<app>`; anything more than one application
+  shares lives in `pkg/`. There is no global state.
 - `pkg/infer` splits inference into a `Completer` (prompt plus schema to typed JSON, the only path to free text) and
   a `Decider` (bounded questions to calibrated probabilities). Backends implement what they can and return
   `ErrUnsupported` for the rest; `ModelManager` is asserted for, not assumed.
@@ -76,6 +76,13 @@ targets cannot resolve a toolchain for that platform; use the script.
   and the encoded form is assembled in order rather than marshalled from a map. The `other` escape hatch with its
   `<facet>_other` companion exists only on closed taxonomy fields (`schema.HasEscapeHatch`); on an inline enum,
   `other` is an ordinary value.
+- `internal/formr/analysis` never evaluates an expression. `unresolved` is never coverage: do not add a heuristic,
+  default or exception that turns it into a mapping. A variable that only gates a declaration's `count` or
+  `for_each` is reported on the declaration, never as a field's origin. No code path names a provider-specific type
+  or field; the Hetzner pilot is an acceptance case, and the test fixtures use an invented `acme/acme` provider.
+- `formr`'s report is deterministic and holds no values from the module. Never add a timestamp, absolute path,
+  line number or literal value to it, and never record whether schemas came from the engine or a snapshot: the same
+  schemas must render the same bytes either way.
 - Name enum values after what belongs in them. A catch-all that names an absence is rarely chosen by a model.
 - `internal/sicht/store` keys everything by content hash, never by path. The `decisions` view resolves human over
   rule over model; precedence is a reading of the rows, never applied by deleting any.
@@ -117,7 +124,7 @@ targets cannot resolve a toolchain for that platform; use the script.
   environment or the configuration file.
 - **`sicht` never sends image data off the machine.** A non-loopback `OLLAMA_HOST` is warned about twice by `doctor`:
   for exposure, and because inference would no longer be local.
-- **No session token is planned for `sicht serve`.** Both applications run on the machine holding the data and are not
+- **No session token is planned for `sicht serve`.** The applications run on the machine holding the data and are not
   for public deployment. The loopback bind, Host-header validation, `http.CrossOriginProtection` and the CSP are what
   defend the planned web interface against web pages in the user's own browser, so none of them is optional.
 - A path built from a facet value is sanitised before it becomes a filename: `fsops.SanitiseRelative` rejects `..`,
@@ -134,6 +141,8 @@ targets cannot resolve a toolchain for that platform; use the script.
   `cmd`.
 - `internal/sicht/`: `core`, `config`, `store`, `meta`, `scan`, `rules`, `schema`, `stage`, `confidence`, `imageprep`,
   `apply`, `manifest`, `doctor`, `bench`, `cmd`.
+- `internal/formr/`: `addr`, `diag`, `module`, `schema`, `analysis`, `report`, `cmd`, and `formrtest` for shared
+  fixtures.
 - `internal/fsops/`: verified move and copy with a cross-volume fallback, used by `apply` and `undo`.
 - `internal/harness/`: build-time checks for the SQLite driver and the cgo-free build.
 - `pkg/infer/`: `ollamabackend`, `openaibackend`, `anthropicbackend` and a `Fake` for tests.

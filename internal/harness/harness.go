@@ -16,7 +16,7 @@
 // CGO_ENABLED=0. A test cannot assert it, because Go's `cgo` build tag reports whether a C
 // toolchain is available on the builder, not whether this module uses one.
 //
-// Both applications open their own databases through their own store packages; nothing here
+// bookscape and sicht each open their own databases through their own store packages; nothing here
 // is meant to be imported by them.
 package harness
 

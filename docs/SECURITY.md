@@ -43,8 +43,8 @@ transit; they do not authenticate the publisher independently of GitHub. Release
 
 ## Trust and Privilege Boundaries
 
-Both applications are personal tools that run on the machine holding the data, as the user who owns it. Neither
-runs a network listener, and neither elevates privileges.
+The applications are personal tools that run on the machine holding the data, as the user who owns it. None runs a
+network listener, and none elevates privileges.
 
 - **sicht and file moves.** `sicht apply` moves files within the workspace according to a plan. Targets are built
   from facet values, which a model can produce, so every path segment is sanitised and absolute paths, `..`
@@ -55,6 +55,11 @@ runs a network listener, and neither elevates privileges.
   because inference would no longer be local. Run Ollama bound to loopback unless it is deliberately shared.
 - **sicht and exiftool.** sicht runs the `exiftool` found on `PATH` over every scanned file. Use a trusted
   installation; a crafted image is parsed by exiftool, not by sicht.
+- **formr and the Terraform engine.** formr runs the `terraform` or `tofu` executable named by `--engine`, which in
+  turn runs the module's provider plugins to read their schemas; plugins are programs, so this is not a sandbox. Use
+  trusted engine and provider installations, verified by the module's lock file. formr never configures a provider,
+  needs no credentials and reads no state, plan, variable files or `secrets/`; its reports contain no values from
+  the module.
 - **bookscape and outbound requests.** `bookscape check` sends requests to every bookmarked host, with TLS
   certificate verification always enabled. Those hosts and the network path learn which links are being checked.
   The model pass sends URLs, titles and folder paths to the configured provider; with `classify.provider: ollama`

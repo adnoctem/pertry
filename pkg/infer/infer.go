@@ -1,7 +1,6 @@
-// Package infer is the provider-agnostic inference layer shared by the applications in this
-// repository.
+// Package infer is the provider-agnostic inference layer shared by bookscape and sicht.
 //
-// It exists because both applications need the same thing from a model — a typed answer, with
+// It exists because both need the same thing from a model — a typed answer, with
 // provenance, that can be validated — while needing it from different providers for different
 // reasons. `bookscape` classifies text against a hosted model. `sicht` classifies images against
 // a model on the local machine, and must keep doing so: the archive it sorts contains third

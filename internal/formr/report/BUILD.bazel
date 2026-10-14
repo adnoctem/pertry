@@ -1,0 +1,38 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "report",
+    srcs = [
+        "diff.go",
+        "report.go",
+    ],
+    importpath = "github.com/adnoctem/pertry/internal/formr/report",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/formr/addr",
+        "//internal/formr/analysis",
+        "//internal/formr/diag",
+        "//internal/formr/module",
+        "//internal/formr/schema",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":report",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "report_test",
+    srcs = ["report_test.go"],
+    data = glob(["testdata/**"]),
+    deps = [
+        ":report",
+        "//internal/formr/addr",
+        "//internal/formr/analysis",
+        "//internal/formr/formrtest",
+        "//internal/formr/module",
+        "//internal/formr/schema",
+    ],
+)

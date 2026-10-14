@@ -3,7 +3,7 @@
 Contributions are welcome via GitHub's Pull Requests. This document covers the development workflow, the code
 conventions and the release procedure.
 
-Start with the [Architecture][architecture] for how the two applications work and what they share. Each
+Start with the [Architecture][architecture] for how the applications work and what they share. Each
 application's README beside its entrypoint is its user documentation. Participation follows the
 [Code of Conduct][conduct]; report suspected vulnerabilities privately using the [Security Policy][security]. Open
 work is tracked in the [TODO][todo].
@@ -46,7 +46,7 @@ installs the same pinned version.
 ## 🗂️ Repository Layout
 
 The [Architecture][architecture_layout] shows the full tree. In short: `cmd/<app>/` holds a thin entrypoint and the
-application's README, `internal/<app>/` its code, `pkg/` what both applications share, `tests/e2e/` the
+application's README, `internal/<app>/` its code, `pkg/` what more than one application shares, `tests/e2e/` the
 container-backed tests, and `scripts/` the release, stamp and cross-compilation scripts. `dist/` (release output)
 and `secrets/` (local real data) are gitignored.
 
@@ -99,7 +99,7 @@ request labelled `e2e`. See [`tests/README.md`][tests_readme].
 - Return errors wrapped with `%w`; do not panic. A message shown to a user says what failed and, where possible, a
   hint for what to do.
 - Keep `cmd/<app>` a thin entrypoint. Application code belongs in `internal/<app>`; a package moves to `pkg/` only
-  when both applications need it. Hold no global state.
+  when more than one application needs it. Hold no global state.
 - **No cgo.** Every Bazel build disables it, so a dependency that needs it fails to build. SQLite is
   `modernc.org/sqlite` under the driver name `sqlite`, not `sqlite3`. `internal/harness` fails the build if either
   the driver name or the cgo-free build regresses.
@@ -206,7 +206,7 @@ the release notes of every major update before merging it.
 ## 🚀 Releases
 
 semantic-release generates `CHANGELOG.md` from the commits; do not edit it by hand. It decides the version and
-passes it to `scripts/release-create.sh`, which checks it, builds both applications for `linux/amd64` and
+passes it to `scripts/release-create.sh`, which checks it, builds every application for `linux/amd64` and
 `windows/amd64`, packages the tarballs and writes the checksums. The [Architecture][architecture_artifacts]
 describes the artifacts.
 
@@ -261,7 +261,7 @@ semantic-release derives the version from these messages, so a wrong type produc
 
 1. Fork this repository, develop, and test your changes.
 2. Add your GitHub username to the [`AUTHORS`][authors] and [`CODEOWNERS`][owners] files.
-3. Submit a pull request. Keep changes to the two applications in separate pull requests where they are
+3. Submit a pull request. Keep changes to different applications in separate pull requests where they are
    independent.
 
 A pull request must pass CI: the hooks, the Bazel build and tests, `go vet`, govulncheck, both cross-compiles and
