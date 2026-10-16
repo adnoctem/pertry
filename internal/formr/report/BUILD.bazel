@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "diff.go",
         "report.go",
+        "wrap.go",
     ],
     importpath = "github.com/adnoctem/pertry/internal/formr/report",
     visibility = ["//:__subpackages__"],
@@ -25,7 +26,10 @@ alias(
 
 go_test(
     name = "report_test",
-    srcs = ["report_test.go"],
+    srcs = [
+        "report_test.go",
+        "wrap_test.go",
+    ],
     data = glob(["testdata/**"]),
     deps = [
         ":report",

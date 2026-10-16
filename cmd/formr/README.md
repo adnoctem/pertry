@@ -24,7 +24,7 @@ This page is how to use it. How it works, and where its limits are, is described
 - [Commands](#commands)
 - [In CI](#in-ci)
 - [Exit codes](#exit-codes)
-- [Not yet implemented](#not-yet-implemented)
+- [Not supported](#not-supported)
 
 ---
 
@@ -97,11 +97,24 @@ and line, and into the report without them.
 
 ### `check [dir] [--report SCHEMA.md] [--policy default]`
 
-Regenerates the report in memory and compares it with `--report`, printing the lines that
-differ. Then it evaluates the policy against what it just analysed, not against the file — so
-editing `SCHEMA.md` by hand cannot make it pass. It writes nothing.
+Regenerates the report in memory and compares it with `--report`. Each difference is listed by
+row, with what changed in it:
 
-The `default` policy requires a complete inventory and no unresolved mappings.
+```text
+  changed `hcloud_server.current`: `size`
+            Input: direct: `var.size` → omitted
+  added   `hcloud_server.current`: `placement_group_id`
+```
+
+Then it evaluates the policy against what it just analysed, not against the file — so editing
+`SCHEMA.md` by hand cannot make it pass. It writes nothing.
+
+The `default` policy, the only one, requires a complete inventory and no unresolved mappings. An
+omitted field does not fail it: removing an assignment changes the report, so `check` fails on the
+drift instead, and the change is reviewed like any other change to `SCHEMA.md`.
+
+Pass the same `--max-width` to `check` as to `schema`, or the line breaks differ and the report
+reads as out of date.
 
 ### `snapshot [dir] --output FILE`
 
@@ -122,6 +135,12 @@ Prints the version, commit and toolchain the binary was built from.
 | `--timeout`     | `5m`        | Timeout for each engine command              |
 | `--log-level`   | `info`      | `debug`, `info`, `warn` or `error`           |
 
+`schema` and `check` also take `--max-width N`, which wraps prose lines — the introduction, list
+items, diagnostics — at `N` characters, for markdownlint's `MD013`. Code spans are never split, and
+the line breaks are the ones Prettier's `proseWrap: always` produces at the same print width. Table
+rows are never wrapped, since a Markdown table row cannot continue on another line; set MD013's
+`tables: false` for the report. The default, `0`, does not wrap.
+
 ## In CI
 
 ```bash
@@ -141,10 +160,12 @@ broad constraints can legitimately select a newer one and report drift.
 | `1`  | `check`: the report is out of date, or the policy is not met        |
 | `2`  | Bad arguments, the engine failed, the HCL did not parse, or similar |
 
-## Not yet implemented
+## Not supported
 
-- Exception annotations (`# formr:exception …`) for recording that an omission is intended, and
-  the `complete-resource-interface` policy that relies on them.
 - Remote child modules, `.tf.json` and override files, which are reported as errors.
-- A schema-only root for modules whose provider configurations must be passed in through
-  `configuration_aliases`.
+- Modules whose provider configurations must be passed in through `configuration_aliases`, if the
+  module cannot be initialised on its own.
+- Recording that an omission is intended. Say so in the module's own documentation.
+
+A module initialised by Terraform has to be initialised again before OpenTofu can read its
+schemas, and the other way round: the two lock providers under different registry addresses.

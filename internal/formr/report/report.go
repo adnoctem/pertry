@@ -30,6 +30,9 @@ type Input struct {
 	Provenance    schema.Provenance
 	SchemaFormat  string
 	ExtraWarnings []string
+	// MaxWidth wraps prose lines at this many characters; 0 leaves them unwrapped. Tables are
+	// never wrapped, because a Markdown table row cannot span lines.
+	MaxWidth int
 }
 
 // Render produces SCHEMA.md.
@@ -48,7 +51,7 @@ func Render(in Input) string {
 	renderProviders(&b, in.Analysis.Providers)
 	renderDeclarations(&b, in.Analysis.Declarations)
 
-	return strings.TrimRight(b.String(), "\n") + "\n"
+	return Wrap(strings.TrimRight(b.String(), "\n")+"\n", in.MaxWidth)
 }
 
 func renderProvenance(b *strings.Builder, in Input) {

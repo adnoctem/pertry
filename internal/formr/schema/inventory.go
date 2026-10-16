@@ -152,6 +152,32 @@ func (s *Set) Has(p addr.Provider) bool {
 	return ok
 }
 
+// Resolve maps a provider address to the one these schemas use. A source written without a
+// hostname means "the engine's default registry", which is registry.terraform.io for Terraform
+// and registry.opentofu.org for OpenTofu, so an address parsed against one default is moved to
+// the other when only the other is present. An address the schemas carry is returned unchanged,
+// and so is one neither registry has.
+func (s *Set) Resolve(p addr.Provider) addr.Provider {
+	if s.Has(p) {
+		return p
+	}
+
+	alt := p
+	switch p.Hostname {
+	case addr.DefaultHostname:
+		alt.Hostname = addr.OpenTofuHostname
+	case addr.OpenTofuHostname:
+		alt.Hostname = addr.DefaultHostname
+	default:
+		return p
+	}
+	if s.Has(alt) {
+		return alt
+	}
+
+	return p
+}
+
 // Inventory builds the inventory of one provider configuration, resource or data-source type.
 // ok is false when the provider has no schema of that kind and name.
 func (s *Set) Inventory(p addr.Provider, kind addr.Kind, typ string) (*Inventory, bool) {

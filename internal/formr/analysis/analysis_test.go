@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/adnoctem/pertry/internal/formr/addr"
 	"github.com/adnoctem/pertry/internal/formr/analysis"
 	"github.com/adnoctem/pertry/internal/formr/formrtest"
 	"github.com/adnoctem/pertry/internal/formr/module"
@@ -302,5 +303,88 @@ resource "acme_volume" "e" {
 	}
 	if !found {
 		t.Errorf("diagnostics = %v, want one naming the unknown argument", res.Diagnostics)
+	}
+}
+
+// The instance selector of a counted declaration can come from around the reference rather than
+// from its own steps. Found on terraform-cloudflare-dns, where `one(resource.this)` outputs left
+// every DNSSEC field reported unused.
+func TestInstanceSelectorFromTheSurroundingExpression(t *testing.T) {
+	res := analyse(t, formrtest.With(formrtest.Main, map[string]string{
+		"instances.tf": `
+resource "acme_volume" "counted" {
+  count = var.create ? 1 : 0
+  name  = "counted"
+}
+
+resource "acme_volume" "keyed" {
+  for_each = toset(["a", "b"])
+  name     = each.key
+}
+
+module "counted" {
+  count  = var.create ? 1 : 0
+  source = "./child"
+}
+
+output "one_whole" {
+  value = one(acme_volume.counted)
+}
+
+output "keyed_ids" {
+  value = { for k, v in acme_volume.keyed : k => v.id }
+}
+
+output "keyed_names" {
+  value = values(acme_volume.keyed)[*].name
+}
+
+output "child_id" {
+  value = one(module.counted).id
+}
+`,
+	}))
+
+	counted := declaration(t, res, "acme_volume.counted")
+	for _, path := range []string{"id", "name", "size"} {
+		if f := field(t, counted, path); f.Usage != analysis.Exported {
+			t.Errorf("acme_volume.counted.%s usage = %q, want exported through one()", path, f.Usage)
+		}
+	}
+	if f := field(t, declaration(t, res, "acme_volume.keyed"), "id"); f.Usage != analysis.Exported {
+		t.Errorf("acme_volume.keyed.id usage = %q, want exported through a for over instances", f.Usage)
+	}
+	if f := field(t, declaration(t, res, "module.counted.acme_volume.c"), "id"); f.Usage != analysis.Exported {
+		t.Errorf("module.counted.acme_volume.c.id usage = %q, want exported through one(module...)", f.Usage)
+	}
+}
+
+func TestOriginRendering(t *testing.T) {
+	o := analysis.Origin{Kind: analysis.Produced, Decl: addr.Declaration{Kind: addr.KindResource, Type: "acme_volume", Name: "this"},
+		Path: addr.Path{addr.E(), addr.A("id")}}
+	if got := o.String(); got != "acme_volume.this[].id" {
+		t.Errorf("origin renders %q, want acme_volume.this[].id", got)
+	}
+}
+
+// OpenTofu resolves an unqualified source such as `acme/acme` against registry.opentofu.org.
+// formr assumed registry.terraform.io and found no schema for anything (found running the
+// Hetzner server module under OpenTofu 1.13.1).
+func TestOpenTofuRegistryHost(t *testing.T) {
+	tree, diags := module.LoadTree(formrtest.WriteModule(t, formrtest.Main))
+	if tree == nil {
+		t.Fatalf("load: %v", diags)
+	}
+	doc := strings.ReplaceAll(formrtest.Schema, "registry.terraform.io/acme/acme", "registry.opentofu.org/acme/acme")
+	set, err := schema.Decode([]byte(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := analysis.Analyze(tree, set)
+	if res.Diagnostics.HasErrors() {
+		t.Fatalf("diagnostics: %v", res.Diagnostics)
+	}
+	if got := declaration(t, res, "acme_server.this").Provider.String(); got != "registry.opentofu.org/acme/acme" {
+		t.Errorf("provider = %s, want the OpenTofu registry address", got)
 	}
 }

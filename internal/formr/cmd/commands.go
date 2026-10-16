@@ -33,6 +33,7 @@ func NewSchemaCommand(a *App) *cobra.Command {
 	}
 
 	src.register(cmd)
+	src.registerRender(cmd)
 	cmd.Flags().StringVarP(&output, "output", "o", "", "Write the report here instead of standard output")
 
 	return cmd
@@ -43,7 +44,7 @@ func (a *App) runSchema(ctx context.Context, dir string, src sourceFlags, output
 	if err != nil {
 		return err
 	}
-	text, _, err := a.build(dir, acq)
+	text, _, err := a.build(dir, acq, src.maxWidth)
 	if err != nil {
 		return err
 	}
@@ -57,11 +58,11 @@ func (a *App) runSchema(ctx context.Context, dir string, src sourceFlags, output
 	return os.WriteFile(output, []byte(text), 0o644)
 }
 
-// Policies.
-const (
-	policyDefault  = "default"
-	policyComplete = "complete-resource-interface"
-)
+// maxListed bounds how many changed rows check prints; a provider upgrade can change hundreds.
+const maxListed = 60
+
+// policyDefault is the only policy: a complete inventory with nothing unresolved.
+const policyDefault = "default"
 
 // NewCheckCommand builds `formr check`.
 func NewCheckCommand(a *App) *cobra.Command {
@@ -75,8 +76,9 @@ func NewCheckCommand(a *App) *cobra.Command {
 			"evaluates the policy against the regenerated analysis - never against the file, so\n" +
 			"rewriting the report cannot make a coverage failure pass. Writes nothing.\n\n" +
 			"Policies:\n" +
-			"  default                      the inventory is complete and nothing is unresolved\n" +
-			"  complete-resource-interface  not yet implemented (needs exceptions, M2)",
+			"  default  the inventory is complete and nothing is unresolved\n\n" +
+			"An omitted field is not a policy failure. Adding or removing an assignment changes the\n" +
+			"report, so it fails as drift and is reviewed as a change to SCHEMA.md.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return a.runCheck(cmd.Context(), singleDir(args), src, reportPath, policy)
@@ -84,8 +86,9 @@ func NewCheckCommand(a *App) *cobra.Command {
 	}
 
 	src.register(cmd)
+	src.registerRender(cmd)
 	cmd.Flags().StringVar(&reportPath, "report", "SCHEMA.md", "The committed report to compare against")
-	cmd.Flags().StringVar(&policy, "policy", policyDefault, "Coverage policy: default or complete-resource-interface")
+	cmd.Flags().StringVar(&policy, "policy", policyDefault, "Coverage policy (only default exists)")
 
 	return cmd
 }
@@ -93,8 +96,6 @@ func NewCheckCommand(a *App) *cobra.Command {
 func (a *App) runCheck(ctx context.Context, dir string, src sourceFlags, reportPath, policy string) error {
 	switch policy {
 	case policyDefault:
-	case policyComplete:
-		return errors.New("policy complete-resource-interface needs exception annotations, which are not implemented yet")
 	default:
 		return fmt.Errorf("unknown policy %q", policy)
 	}
@@ -108,20 +109,28 @@ func (a *App) runCheck(ctx context.Context, dir string, src sourceFlags, reportP
 	if err != nil {
 		return err
 	}
-	text, res, err := a.build(dir, acq)
+	text, res, err := a.build(dir, acq, src.maxWidth)
 	if err != nil {
 		return err
 	}
 
 	var problems []string
-	if diff := report.Diff(string(committed), text); len(diff) > 0 {
-		problems = append(problems, fmt.Sprintf("%s is out of date (%d lines differ); regenerate it with `formr schema`", reportPath, len(diff)))
-		for i, line := range diff {
-			if i == 60 {
-				fmt.Fprintf(a.Err, "  ... %d more\n", len(diff)-i)
+	if string(committed) != text {
+		changes := report.Changes(string(committed), text)
+		problems = append(problems, fmt.Sprintf("%s is out of date (%d rows differ); regenerate it with `formr schema`", reportPath, len(changes)))
+		for i, c := range changes {
+			if i == maxListed {
+				fmt.Fprintf(a.Err, "  ... %d more\n", len(changes)-i)
 				break
 			}
-			fmt.Fprintf(a.Err, "  %s\n", line)
+			fmt.Fprintf(a.Err, "  %-7s %s: %s\n", c.Kind, c.Section, c.Row)
+			for _, col := range c.Columns {
+				fmt.Fprintf(a.Err, "            %s\n", col)
+			}
+		}
+		if len(changes) == 0 {
+			// Only whitespace or ordering moved; say so rather than reporting nothing.
+			fmt.Fprintf(a.Err, "  the rows are identical but the bytes are not; was the file reformatted, or --max-width changed?\n")
 		}
 	}
 	problems = append(problems, evaluateDefault(res)...)

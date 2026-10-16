@@ -128,6 +128,7 @@ func Analyze(tree *module.Tree, set *schema.Set) *Result {
 
 	providers := map[string]*ProviderConfig{}
 	addProvider := func(b module.Binding) {
+		b.Provider = set.Resolve(b.Provider)
 		key := b.Provider.String() + "|" + b.Alias
 		if _, ok := providers[key]; ok {
 			return
@@ -153,6 +154,7 @@ func Analyze(tree *module.Tree, set *schema.Set) *Result {
 			}
 
 			b := inst.Bind(d.Provider)
+			b.Provider = set.Resolve(b.Provider)
 			rng := d.Range
 			if b.Owner == module.OwnerUnbound {
 				res.Diagnostics.Errorf(label, &rng, "%s uses provider configuration %s, which nothing configures or passes in",
@@ -590,7 +592,7 @@ func providerConfigs(tree *module.Tree, set *schema.Set, seen map[string]*Provid
 			continue
 		}
 
-		inst, decl := providerBlock(tree, pc)
+		inst, decl := providerBlock(tree, set, pc)
 		w := &declWork{
 			inst:  inst,
 			decl:  decl,
@@ -609,13 +611,13 @@ func providerConfigs(tree *module.Tree, set *schema.Set, seen map[string]*Provid
 	return out
 }
 
-func providerBlock(tree *module.Tree, pc *ProviderConfig) (*module.Instance, *module.Declaration) {
+func providerBlock(tree *module.Tree, set *schema.Set, pc *ProviderConfig) (*module.Instance, *module.Declaration) {
 	for _, inst := range tree.Instances {
 		if inst.Path.String() != pc.Location {
 			continue
 		}
 		for _, d := range inst.Module.Declarations {
-			if d.Kind == addr.KindProvider && inst.Module.Provider(d.Type) == pc.Provider && d.Name == pc.Alias {
+			if d.Kind == addr.KindProvider && set.Resolve(inst.Module.Provider(d.Type)) == pc.Provider && d.Name == pc.Alias {
 				return inst, d
 			}
 		}

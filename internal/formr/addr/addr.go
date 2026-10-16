@@ -11,8 +11,13 @@ import (
 	"strings"
 )
 
-// DefaultHostname is the registry an unqualified provider source resolves against.
+// DefaultHostname is the registry an unqualified provider source is parsed against. It is
+// Terraform's default; OpenTofu's is OpenTofuHostname, and which one applies is only known once
+// the engine's schemas are in hand (schema.Set.Resolve).
 const DefaultHostname = "registry.terraform.io"
+
+// OpenTofuHostname is the registry OpenTofu resolves an unqualified provider source against.
+const OpenTofuHostname = "registry.opentofu.org"
 
 // Provider is a fully qualified provider source address.
 type Provider struct {

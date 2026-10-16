@@ -132,10 +132,19 @@ func Execute(ctx context.Context, a *App, args []string) int {
 
 // sourceFlags are the flags every command that needs schemas shares.
 type sourceFlags struct {
+	// maxWidth is a rendering option rather than a source one, but every command that renders
+	// also acquires, and `schema` and `check` must render identically or check reports drift.
+	maxWidth   int
 	init       bool
 	engine     string
 	schemaFile string
 	timeout    time.Duration
+}
+
+// registerRender adds the flags that change how a report is rendered.
+func (s *sourceFlags) registerRender(cmd *cobra.Command) {
+	cmd.Flags().IntVar(&s.maxWidth, "max-width", 0,
+		"Wrap prose lines at this many characters, for markdownlint's MD013 (0: do not wrap; tables never wrap)")
 }
 
 func (s *sourceFlags) register(cmd *cobra.Command) {
@@ -214,7 +223,10 @@ func (a *App) acquire(ctx context.Context, dir string, s sourceFlags) (*acquired
 }
 
 // build loads the module tree and renders its report.
-func (a *App) build(dir string, acq *acquired) (string, *analysis.Result, error) {
+func (a *App) build(dir string, acq *acquired, maxWidth int) (string, *analysis.Result, error) {
+	if maxWidth < 0 {
+		return "", nil, fmt.Errorf("--max-width must not be negative, got %d", maxWidth)
+	}
 	info, err := os.Stat(dir)
 	if err != nil {
 		return "", nil, err
@@ -237,6 +249,7 @@ func (a *App) build(dir string, acq *acquired) (string, *analysis.Result, error)
 		Provenance:    acq.prov,
 		SchemaFormat:  acq.set.FormatVersion,
 		ExtraWarnings: acq.warnings,
+		MaxWidth:      maxWidth,
 	}), res, nil
 }
 

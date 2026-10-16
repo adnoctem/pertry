@@ -30,6 +30,7 @@ go_test(
     srcs = ["analysis_test.go"],
     deps = [
         ":analysis",
+        "//internal/formr/addr",
         "//internal/formr/formrtest",
         "//internal/formr/module",
         "//internal/formr/schema",

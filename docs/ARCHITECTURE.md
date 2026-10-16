@@ -592,6 +592,11 @@ and `TF_INPUT=0`, with a per-command timeout. `--init` first runs `init -backend
 what the lock file selects without upgrading. Alternatively `--schema-file` reads a snapshot written by
 `formr snapshot`, and no engine runs.
 
+A provider source written without a hostname, such as `hetznercloud/hcloud`, names the engine's default registry:
+`registry.terraform.io` for Terraform and `registry.opentofu.org` for OpenTofu. formr resolves such an address
+against whichever of the two the schemas carry, so the same module reports the same fields under either engine; only
+the provider addresses and the engine in the provenance differ.
+
 Provider releases come from `.terraform.lock.hcl`, not from the schema's numeric `version`, which is the provider's
 state-schema version. A snapshot carries the engine and the releases with it; a bare `providers schema -json`
 document is accepted with a warning that its provenance is unknown. Only schema `format_version` 1.x is read.
@@ -654,17 +659,22 @@ error.
 
 `SCHEMA.md` lists provenance, a summary of the leaf counts, diagnostics, every provider configuration and every
 declaration, sorted by identity. It contains no timestamps, absolute paths or line numbers, and identical input
-produces identical bytes regardless of file names or order. Tables are padded as Prettier pads them. Diagnostics
-are printed to standard error with their source ranges.
+produces identical bytes regardless of file names or order. Tables are padded as Prettier pads them. With
+`--max-width`, prose lines are filled greedily to that width, without splitting a code span, which gives the same line
+breaks as Prettier's `proseWrap: always` at the same print width. Table rows are never wrapped: a Markdown table row
+cannot continue on another line, so a line-length rule has to exempt tables. Diagnostics are printed to standard
+error with their source ranges.
 
-`formr check` fails when the committed report differs from the regenerated one, and evaluates the `default` policy
-against the regenerated analysis: the inventory is complete and no field is unresolved. Rewriting the report cannot
-make a policy failure pass.
+`formr check` fails when the committed report differs from the regenerated one, and lists each difference by row:
+the section, the row's first cell, and for a changed row each changed column with its old and new value. It then
+evaluates the `default` policy against the regenerated analysis: the inventory is complete and no field is
+unresolved. Rewriting the report cannot make a policy failure pass. An omitted field is not a policy failure; adding
+or removing an assignment changes the report and fails as drift.
 
 ### formr Known Limitations
 
-- **Exceptions and the `complete-resource-interface` policy are not implemented.** Every omitted or unresolved
-  field is marked `needs-review`, and there is no way yet to record that an omission is intended.
+- **There is no way to record that an omission is intended.** Every omitted or unresolved field is marked
+  `needs-review`; the reason for an intended omission belongs in the module's own documentation.
 - **Remote child modules, `.tf.json` files and override files are not analysed.** Each is reported as an error that
   makes the inventory incomplete.
 - **Ephemeral resources, actions and provider functions** referenced by a module are not inventoried; a provider
@@ -673,7 +683,9 @@ make a policy failure pass.
   Validation rules, type conversions and defaults are not evaluated.
 - **The report covers the provider releases it was generated with.** It says nothing about other releases the
   module's version constraints allow.
-- formr has been run against Terraform. The OpenTofu path uses the same commands and has not been exercised.
+- formr has been run against Terraform 1.16 and OpenTofu 1.13. A module initialised by one engine has to be
+  initialised again before the other can read its schemas, because the two lock their providers under different
+  registry addresses.
 - A module whose provider configurations must be passed in through `configuration_aliases` cannot always be
   initialised on its own; formr does not yet build a schema-only root for it.
 

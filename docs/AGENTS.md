@@ -80,6 +80,13 @@ targets cannot resolve a toolchain for that platform; use the script.
   default or exception that turns it into a mapping. A variable that only gates a declaration's `count` or
   `for_each` is reported on the declaration, never as a field's origin. No code path names a provider-specific type
   or field; the Hetzner pilot is an acceptance case, and the test fixtures use an invented `acme/acme` provider.
+- **An unqualified provider source has no fixed address.** `hetznercloud/hcloud` is `registry.terraform.io/…` under
+  Terraform and `registry.opentofu.org/…` under OpenTofu. Pass every address from a module through
+  `schema.Set.Resolve` before looking it up or reporting it; without that, every field of every module is missing
+  under OpenTofu.
+- **An instance selector can come from around a reference.** In `one(x.this)`, a splat or a `for` over instances, the
+  step that selects the instance of a counted declaration is in the surrounding expression, not in the reference.
+  Strip it from the combined path, as `tracer.declaration` does.
 - `formr`'s report is deterministic and holds no values from the module. Never add a timestamp, absolute path,
   line number or literal value to it, and never record whether schemas came from the engine or a snapshot: the same
   schemas must render the same bytes either way.

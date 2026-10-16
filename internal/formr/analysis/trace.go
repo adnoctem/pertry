@@ -51,6 +51,10 @@ func (o Origin) String() string {
 	if len(o.Path) == 0 {
 		return o.Decl.String()
 	}
+	if o.Path[0].Kind != addr.Attr {
+		// An element step attaches directly: `pool.this[].id`, not `pool.this.[].id`.
+		return o.Decl.String() + o.Path.String()
+	}
 
 	return o.Decl.String() + "." + o.Path.String()
 }
@@ -480,24 +484,27 @@ func (t *tracer) moduleOutput(sc scope, rest, path addr.Path) Flow {
 	if !ok {
 		return unresolved("module.%s is not analysed", rest[0].Name)
 	}
-	rest = rest[1:]
+	// The instance selector of a counted call can come from the reference itself
+	// (`module.x[0].out`) or from what surrounds it (`one(module.x).out`, a splat), so it is
+	// stripped from the combined path rather than from the reference's own steps.
+	full := rest[1:].Append(path...)
 	if child.Call.Count != nil || child.Call.ForEach != nil {
-		if len(rest) == 0 {
+		if len(full) == 0 {
 			return unresolved("module.%s used as a whole collection is not modelled", child.Call.Name)
 		}
-		rest = rest[1:]
+		full = full[1:]
 	}
 
-	if len(rest) == 0 {
+	if len(full) == 0 {
 		var f Flow
 		for _, name := range sortedKeys(child.Module.Outputs) {
-			f = f.union(t.output(child, name, path))
+			f = f.union(t.output(child, name, nil))
 		}
 
 		return f
 	}
 
-	return t.output(child, rest[0].Name, rest[1:].Append(path...))
+	return t.output(child, full[0].Name, full[1:])
 }
 
 func (t *tracer) output(child *module.Instance, name string, path addr.Path) Flow {
@@ -527,15 +534,20 @@ func (t *tracer) declaration(sc scope, kind addr.Kind, typ, name string, rest, p
 
 		return unresolved("reference to undeclared %s%s.%s", prefix, typ, name)
 	}
-	// The first step on a counted declaration selects an instance, not a field.
-	if decl.Conditional() && len(rest) > 0 {
-		rest = rest[1:]
+	// The first step on a counted declaration selects an instance, not a field. It can come from
+	// the reference itself (`x.this[0].id`) or from what surrounds it: `one(x.this)`, a splat, or
+	// a `for` over the instances. Stripping it from the reference's own steps only made every
+	// field read through `one(...)` look unused (found on terraform-cloudflare-dns, whose DNSSEC
+	// and DNS settings outputs are `one(resource.this)`).
+	full := rest.Append(path...)
+	if decl.Conditional() && len(full) > 0 {
+		full = full[1:]
 	}
 
 	return Flow{Origins: []Origin{{
 		Kind:  Produced,
 		Decl:  addr.Declaration{Module: sc.inst.Path, Kind: kind, Type: typ, Name: name},
-		Path:  rest.Append(path...),
+		Path:  full,
 		Exact: true,
 	}}}
 }
